@@ -347,9 +347,9 @@ class Jev:
             criteria[Jev.NONE] = "None of the cases apply."
             return Choice(
                 instructions=(
-                    "The `match` statement on the line marked `-->` in `source` "
-                    "compares `match_subject` against its cases. Given the current "
-                    "`variables`, which case applies?"
+                    "A `match` statement compares `match_subject` against these "
+                    "cases. Given the current `variables`, which case does "
+                    "`match_subject` match?"
                 ),
                 criteria=criteria,
             )

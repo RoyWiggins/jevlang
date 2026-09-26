@@ -63,17 +63,18 @@ class Request:
 
     def state(self) -> dict:
         """The request as JSON, for Jev's ``state`` field."""
-        state = {
-            "source": self.code,
-            "line": self.lineno,
-            "variables": {k: _jsonable(v) for k, v in self.variables.items()},
-        }
+        variables = {k: _jsonable(v) for k, v in self.variables.items()}
+        if self.kind == "match":
+            # No source here: the cases travel as the Choice's options, and a
+            # source excerpt cut off partway through a long match made Jev
+            # think the later cases didn't exist.
+            subject = {"text": self.text}
+            if self.subject is not NOVALUE:
+                subject["value"] = _jsonable(self.subject)
+            return {"match_subject": subject, "variables": variables}
+        state = {"source": self.code, "line": self.lineno, "variables": variables}
         if self.iteration:
             state["times_this_line_was_evaluated_before"] = self.iteration
-        if self.kind == "match":
-            state["match_subject"] = {"text": self.text}
-            if self.subject is not NOVALUE:
-                state["match_subject"]["value"] = _jsonable(self.subject)
         return state
 
     def prompt(self) -> str:
