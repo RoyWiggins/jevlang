@@ -1,5 +1,11 @@
+# coding: jevlang
 """Run the universal Turing machine from utm_table.py with Jev choosing
 every rule.
+
+This file is itself jevlang, so Jev also runs the loop that drives the UTM:
+whether it has halted, whether a new simulated step has begun, and how to
+apply each rule it picked.  Only the checker (utm_table.rule_index) is plain
+Python, so that it can catch Jev's mistakes rather than make them.
 
 The UTM's 55 rules are turned into a jevlang program, one `match` per UTM
 state.  At every UTM step Python looks up the current state's `match`, Jev
@@ -58,13 +64,6 @@ def load_rules():
     return {state: namespace[f"rule_{i}"] for i, state in enumerate(utm.RULES)}
 
 
-def table_choice(state, symbol):
-    for j, (symbols, *_rest) in enumerate(utm.RULES[state]):
-        if symbols == utm.ANY or symbol in symbols:
-            return j
-    return -1
-
-
 def main(target=2):
     rules = load_rules()
     start, table = utm.MACHINES["beaver"]
@@ -87,14 +86,20 @@ def main(target=2):
                 break
         symbol = tape.get(pos, "_")
         choice = rules[state](WORDS[symbol])
-        expected = table_choice(state, symbol)
+        expected = utm.rule_index(state, symbol)
         if choice != expected:
             print(f"\nJev went wrong at UTM step {utm_steps}: in {state!r} reading {symbol!r} it "
                   f"chose rule {choice}, but the table says rule {expected}.")
             break
         _, write, move, nxt = utm.RULES[state][choice]
-        tape[pos] = symbol if write is None else write
-        pos += 1 if move == "R" else -1
+        if write is None:
+            tape[pos] = symbol
+        else:
+            tape[pos] = write
+        if move == "R":
+            pos += 1
+        else:
+            pos -= 1
         previous, state = state, nxt
         utm_steps += 1
     else:

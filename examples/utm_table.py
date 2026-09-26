@@ -97,6 +97,14 @@ RULES = {
 }
 
 
+def rule_index(state, symbol):
+    """Which of `state`'s rules covers `symbol` (-1 if none)."""
+    for j, (symbols, *_rest) in enumerate(RULES[state]):
+        if symbols == ANY or symbol in symbols:
+            return j
+    return -1
+
+
 def rule_for(state, symbol):
     for symbols, write, move, nxt in RULES[state]:
         if symbols == ANY or symbol in symbols:
