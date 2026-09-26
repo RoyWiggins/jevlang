@@ -152,6 +152,34 @@ mean, and whether a free-form action works.
 game master. A playthrough is
 about 130 calls.
 
+`examples/turing.py` is a Turing machine programmed in English. Each rule
+says when it applies and what it does:
+
+```python
+("carrying and you see a 1", "write a 0 and move left, still carrying"),
+("carrying and you see a 0 or a blank", "write a 1 and halt"),
+```
+
+Jev compiles the what-it-does half once (what to write, which way to move,
+which state comes next), then picks the matching rule at every step:
+
+```
+$ python examples/turing.py increment 1011
+  1 0 1 1 _    [carrying]
+        ^
+  1 0 1 0 _    [carrying]
+      ^
+  1 0 0 0 _    [carrying]
+    ^
+  1 1 0 0 _    [halted]
+    ^
+
+Halted after 8 steps. Tape: 1100
+```
+
+`python examples/turing.py beaver` runs the 2-state busy beaver (6 steps,
+four 1s). Each run is about 50 calls.
+
 With an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
 which speaks the same typed API as TypeSafe's own endpoint.
