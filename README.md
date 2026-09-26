@@ -105,6 +105,15 @@ it's least sure at 10 (p=0.23 for "divisible by both", still a clear no).
 `examples/fizzbuzz_python.py` is the same program with Python conditions,
 which Jev is also asked about unless `JEV_LOCAL_PYTHON=1`.
 
+`examples/vibe_sort.py` bubble-sorts foods by spiciness with
+`if left is spicier than right:`. Name what you're comparing: pulling the pair
+into `left, right = foods[j], foods[j + 1]` matters. With the condition
+written as `foods[j] is spicier than foods[j + 1]`, Jev has to do the
+indexing itself. Its answers drift toward 0.5 (p=0.56–0.76 where the named
+version says 0.82–0.88), and it ranked bell pepper above habanero. The
+named version sorted correctly; the one close call is habanero vs. sriracha
+(p=0.59 in one run, 0.34 in another).
+
 With only an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
 which speaks the same typed API as TypeSafe's own endpoint. (OpenRouter's
@@ -136,8 +145,11 @@ so `if n % 15 == 0:` is a better job for Python.
 Set `JEV_TRACE=1` to log every decision to stderr:
 
 ```
-[jev] bottles.py:3 while 'there are bottles left' -> True @ 0.90 (bool(bottles))
+[jev] bottles.py:3 while 'there are bottles left' [bottles=98] -> True @ 0.90 (bool(bottles))
 ```
+
+Variables named in the condition are shown in brackets, so each line of a
+loop's trace says what was being decided.
 
 `jevlang.runtime.set_backend(obj)` installs a backend from code.
 

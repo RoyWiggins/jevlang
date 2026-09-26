@@ -119,3 +119,11 @@ def test_cli_runner(example):
                        env=env, capture_output=True, text=True, timeout=30)
     assert r.returncode == 0, r.stderr
     assert r.stdout.split() == "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz".split()
+
+
+def test_trace_shows_named_variables(tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("JEV_TRACE", "1")
+    run("# coding: jev\nleft, right, other = 'a', 'b', 'c'\nif left is not right:\n    pass\n", tmp_path)
+    err = capsys.readouterr().err
+    assert "[left='a', right='b'] -> True" in err
+    assert "other" not in err

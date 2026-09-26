@@ -10,6 +10,7 @@ decide.
 from __future__ import annotations
 
 import os
+import re
 import sys
 import types
 from dataclasses import dataclass, field
@@ -253,9 +254,14 @@ class Session:
     def _log(self, req: Request, decision: Decision) -> None:
         if self.trace:
             reason = f" ({decision.reason})" if decision.reason else ""
+            # Show the variables the condition names, so each line of a loop's
+            # trace says what was being decided.
+            words = set(re.findall(r"[A-Za-z_]\w*", req.text))
+            named = [f"{k}={_short_repr(v, 40)}" for k, v in req.variables.items() if k in words]
+            where = f" [{', '.join(named)}]" if named else ""
             print(
                 f"[jev] {os.path.basename(self.filename)}:{req.lineno} "
-                f"{req.kind} {req.text!r} -> {decision.value!r} "
+                f"{req.kind} {req.text!r}{where} -> {decision.value!r} "
                 f"@ {decision.confidence:.2f}{reason}",
                 file=sys.stderr,
             )
