@@ -199,6 +199,33 @@ don't expect it to compute anything you'd recognise, but the tape it
 leaves after 20 steps (`1 1 2 2 0 1 0`, head on the last square, state B)
 matches a plain-Python run of the same table.
 
+`examples/utm.py` is a "universal" Turing machine, the cheap way. Its tape
+holds the busy beaver's program as English entries, and its own rules are
+five English instructions that Jev carries out:
+
+```python
+match utm_state:
+    case reading: note the simulated state and the symbol under the simulated head:
+        ...
+    case looking up: find the program entry that matches the state and symbol:
+        ...
+```
+
+A real UTM matches and copies symbols one square at a time; this one hands
+the hard part to Jev, so it's a joke. It does get the right answer:
+
+```
+step 5   [_]  1   1   1    state A
+  found:  in state A on a blank: write a 1, move right, become B
+step 6    1  [1]  1   1    state B
+  found:  in state B on a 1: keep the 1, move right, become halt
+
+The universal machine ran 6 simulated steps. The tape has 4 ones.
+```
+
+A full run is about 115 calls; `python examples/utm.py 2` stops after two
+simulated steps (about 40).
+
 With an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
 which speaks the same typed API as TypeSafe's own endpoint.
