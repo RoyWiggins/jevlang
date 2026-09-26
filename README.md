@@ -226,6 +226,39 @@ The universal machine ran 6 simulated steps. The tape has 4 ones.
 A full run is about 115 calls; `python examples/utm.py 2` stops after two
 simulated steps (about 40).
 
+`examples/utm_table.py` is the honest version, in plain Python with no Jev
+yet: a direct-simulation universal machine with 25 states, 18 symbols and
+55 rules. The simulated machine's rules sit on its tape, and it runs them
+one square at a time:
+
+```
+$ python examples/utm_table.py
+UTM: 25 states, 18 symbols, 55 rules
+Simulating 'beaver'. Starting tape:
+  >CE1RuuE1LuuBE1LuE1R$0000x0000
+
+  after     0 UTM steps (+   0): state A   >CE1RuuE1LuuBE1LuE1R$0000x0000
+  after   175 UTM steps (+ 175): state B   >BE1RuuE1LuuCE1LuE1R$00001x000
+  ...
+  after   909 UTM steps (+ 102): halted          >BE1RuuE1LuuBE1LuE1R$0011y1000
+
+6 simulated steps in 909 UTM steps (about 152 per simulated step); 4 ones on the tape.
+```
+
+Each block (`C` marks the current state) holds two entries, for reading 0
+and reading 1: the symbol to write, the direction, and the next state in
+unary (`uu` = state 2, nothing = halt). `x`/`y` mark the simulated head on
+a 0/1. It is checked against a direct simulation after every step, for both
+busy beavers and for random 1-3 state machines (`uv run pytest`). The
+3-state busy beaver takes 4,219 UTM steps.
+
+Running it through Jev is the next step. Each of the 55 rules is one line
+like "in *count*, reading a u: write v, move left, go to *advance: go
+home*", so it would fit `turing.py`'s English format. At about 150 UTM
+steps per simulated step, and a few calls each once rule lookup is two
+questions (state, then symbol) instead of one per rule, one simulated step
+comes to roughly 500 calls.
+
 With an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
 which speaks the same typed API as TypeSafe's own endpoint.
