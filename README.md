@@ -253,15 +253,16 @@ busy beavers and for random 1-3 state machines (`uv run pytest`). The
 3-state busy beaver takes 4,219 UTM steps.
 
 `examples/utm_jev.py` runs that UTM with Jev choosing every rule. The rule
-table becomes a jevlang program with one `match` per UTM state:
+table becomes a jevlang program with one `match` per UTM state, and each
+tape symbol is shown to Jev as a word:
 
 ```python
 def rule_16(symbol):
     # UTM state: count
     match symbol:
-        case reading a u:
+        case the symbol is "unit":
             return 0
-        case reading a zero, a one, an L, an R or a v:
+        case the symbol is "zero", "one", "west", "east" or "tally":
             return 1
         case _:
             return 2
@@ -271,20 +272,29 @@ At each UTM step Python calls the current state's function and applies the
 rule Jev picks, and every pick is checked against the table:
 
 ```
-$ python examples/utm_jev.py 2
+$ python examples/utm_jev.py 6
   simulated step 0: UTM step    0   state A   >CE1RuuE1LuuBE1LuE1R$0000x0000
   simulated step 1: UTM step  175   state B   >BE1RuuE1LuuCE1LuE1R$00001x000
   simulated step 2: UTM step  312   state A   >CE1RuuE1LuuBE1LuE1R$0000y1000
+  simulated step 3: UTM step  513   state B   >BE1RuuE1LuuCE1LuE1R$000x11000
+  simulated step 4: UTM step  642   state A   >CE1RuuE1LuuBE1LuE1R$00x111000
+  simulated step 5: UTM step  807   state B   >BE1RuuE1LuuCE1LuE1R$001y11000
+  simulated step 6: UTM step  909   halted    >BE1RuuE1LuuBE1LuE1R$0011y1000
 
-312 UTM steps, every rule chosen by Jev (312 calls).
-After 2 simulated step(s): state A, matching a direct simulation.
+909 UTM steps, every rule chosen by Jev (909 calls).
+After 6 simulated step(s): state H, matching a direct simulation.
 ```
 
-That's two steps of a busy beaver, interpreted by a universal machine, with
-every rule chosen by Jev, in about 85 seconds. Digits had to be spelled out:
-shown the symbol `1`, Jev was nearly a coin flip on whether it was an `x`,
-and got one wrong 18 steps in. As "one" it made it through all 312 steps,
-though the closest calls (p=0.54, 0.58) were still on "one".
+That's a whole busy beaver run, interpreted by a universal machine, with
+every one of its 909 rules chosen by Jev, in about four minutes. The lowest
+confidence of any choice was p=0.90. The words mattered:
+
+- Shown the raw symbol `1`, Jev was close to a coin flip on whether it was
+  an `x`, and got one wrong 18 steps in.
+- Spelled "one", it got through two simulated steps, but 41 of 312 choices
+  were below p=0.8.
+- Words that are also adjectives backfired: "the symbol is current" read
+  as always true. Quoted nouns ("crown", "flag", "west", "east") fixed it.
 
 With an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),

@@ -37,4 +37,4 @@ def test_generated_jevlang_rules_compile():
     source = utm_jev.jevlang_source()
     ast.parse(transform(source))
     assert source.count("def rule_") == len(utm.RULES)
-    assert "case reading a zero, a one, an L, an R or a v:" in source
+    assert 'case the symbol is "zero", "one", "west", "east" or "tally":' in source
