@@ -9,6 +9,7 @@
 #   python examples/turing.py                  # binary increment of 1011
 #   python examples/turing.py increment 111
 #   python examples/turing.py beaver           # the 2-state busy beaver
+#   python examples/turing.py beaver3          # the 3-state busy beaver
 import sys
 
 
@@ -37,6 +38,20 @@ def machines():
                 ("in state A on a 1", "leave it, move left and switch to state B"),
                 ("in state B on a blank square", "write a 1, move left and go back to state A"),
                 ("in state B on a 1", "leave it, move right and halt"),
+            ],
+        },
+        "beaver3": {
+            "about": "The 3-state busy beaver: writes six 1s on a blank tape in 14 steps, then halts.",
+            "tape": "",
+            "start": "A",
+            "states": ["A", "B", "C", "halted"],
+            "rules": [
+                ("in state A on a blank square", "write a 1, move right and switch to state B"),
+                ("in state A on a 1", "leave it, move right and halt"),
+                ("in state B on a blank square", "leave it blank, move right and switch to state C"),
+                ("in state B on a 1", "leave it, move right and stay in state B"),
+                ("in state C on a blank square", "write a 1, move left and stay in state C"),
+                ("in state C on a 1", "leave it, move left and switch to state A"),
             ],
         },
     }

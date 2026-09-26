@@ -178,7 +178,8 @@ Halted after 8 steps. Tape: 1100
 ```
 
 `python examples/turing.py beaver` runs the 2-state busy beaver (6 steps,
-four 1s). Each run is about 50 calls.
+four 1s), and `beaver3` the 3-state one (14 steps, six 1s). Each run is
+about 50 calls, or about 120 for `beaver3`.
 
 With an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
