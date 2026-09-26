@@ -75,7 +75,9 @@ class Request:
             if self.subject is not NOVALUE:
                 subject["value"] = _jsonable(self.subject)
             return {"match_subject": subject, "variables": variables}
-        state = {"source": self.code, "line": self.lineno, "variables": variables}
+        state = {"variables": variables}
+        if self.code:
+            state = {"source": self.code, "line": self.lineno, **state}
         if self.iteration:
             state["times_this_line_was_evaluated_before"] = self.iteration
         return state
@@ -288,8 +290,14 @@ class Session:
         self.globals = module_globals
         self.counts: dict[int, int] = {}
         self.trace = bool(os.environ.get("JEVLANG_TRACE"))
+        # JEVLANG_SHOW_SOURCE=0 leaves the source excerpt out of conditions.
+        # It can distract: `direction == "east"` with direction="east" scored
+        # p=0.37 with the excerpt and 0.94 without.
+        self.show_source = os.environ.get("JEVLANG_SHOW_SOURCE", "1") != "0"
 
     def context(self, lineno: int) -> str:
+        if not self.show_source:
+            return ""
         lo = max(1, lineno - self.CONTEXT_BEFORE)
         hi = min(len(self.source_lines), lineno + self.CONTEXT_AFTER)
         if not self.source_lines:

@@ -170,3 +170,17 @@ def test_roll_uses_probability(tmp_path, monkeypatch):
 def test_decision_probability():
     assert runtime.Decision(True, 0.4).probability == pytest.approx(0.7)
     assert runtime.Decision(False, 0.4).probability == pytest.approx(0.3)
+
+
+def test_show_source_off(tmp_path, monkeypatch):
+    seen = []
+
+    class Spy(FakeJev):
+        def decide(self, req):
+            seen.append(req.state())
+            return super().decide(req)
+
+    runtime.set_backend(Spy())
+    monkeypatch.setenv("JEVLANG_SHOW_SOURCE", "0")
+    run("# coding: jevlang\nx = 1\nif x:\n    pass\n", tmp_path)
+    assert seen == [{"variables": {"x": 1}}]

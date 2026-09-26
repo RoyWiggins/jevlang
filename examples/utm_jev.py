@@ -26,8 +26,14 @@ everything after it.
     python examples/utm_jev.py --show     # print the generated jevlang
 """
 
+import os
 import sys
 from pathlib import Path
+
+# The source excerpt distracts Jev from these small questions (p=0.37 vs 0.94
+# for `direction == "east"`), so leave it out.  Must be set before this
+# file's first condition, when its jevlang session is created.
+os.environ.setdefault("JEVLANG_SHOW_SOURCE", "0")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
