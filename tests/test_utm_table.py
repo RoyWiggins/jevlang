@@ -24,3 +24,17 @@ def test_busy_beavers(name, sim_steps, ones):
 
 def test_random_machines():
     assert utm.self_test(n=150, seed=7) == 150
+
+
+def test_generated_jevlang_rules_compile():
+    import ast
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "examples"))
+    import utm_jev
+    from jevlang import transform
+
+    source = utm_jev.jevlang_source()
+    ast.parse(transform(source))
+    assert source.count("def rule_") == len(utm.RULES)
+    assert "case reading a zero, a one, an L, an R or a v:" in source

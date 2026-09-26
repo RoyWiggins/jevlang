@@ -252,12 +252,39 @@ a 0/1. It is checked against a direct simulation after every step, for both
 busy beavers and for random 1-3 state machines (`uv run pytest`). The
 3-state busy beaver takes 4,219 UTM steps.
 
-Running it through Jev is the next step. Each of the 55 rules is one line
-like "in *count*, reading a u: write v, move left, go to *advance: go
-home*", so it would fit `turing.py`'s English format. At about 150 UTM
-steps per simulated step, and a few calls each once rule lookup is two
-questions (state, then symbol) instead of one per rule, one simulated step
-comes to roughly 500 calls.
+`examples/utm_jev.py` runs that UTM with Jev choosing every rule. The rule
+table becomes a jevlang program with one `match` per UTM state:
+
+```python
+def rule_16(symbol):
+    # UTM state: count
+    match symbol:
+        case reading a u:
+            return 0
+        case reading a zero, a one, an L, an R or a v:
+            return 1
+        case _:
+            return 2
+```
+
+At each UTM step Python calls the current state's function and applies the
+rule Jev picks, and every pick is checked against the table:
+
+```
+$ python examples/utm_jev.py 2
+  simulated step 0: UTM step    0   state A   >CE1RuuE1LuuBE1LuE1R$0000x0000
+  simulated step 1: UTM step  175   state B   >BE1RuuE1LuuCE1LuE1R$00001x000
+  simulated step 2: UTM step  312   state A   >CE1RuuE1LuuBE1LuE1R$0000y1000
+
+312 UTM steps, every rule chosen by Jev (312 calls).
+After 2 simulated step(s): state A, matching a direct simulation.
+```
+
+That's two steps of a busy beaver, interpreted by a universal machine, with
+every rule chosen by Jev, in about 85 seconds. Digits had to be spelled out:
+shown the symbol `1`, Jev was nearly a coin flip on whether it was an `x`,
+and got one wrong 18 steps in. As "one" it made it through all 312 steps,
+though the closest calls (p=0.54, 0.58) were still on "one".
 
 With an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
