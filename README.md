@@ -296,6 +296,24 @@ confidence of any choice was p=0.90. The words mattered:
 - Words that are also adjectives backfired: "the symbol is current" read
   as always true. Quoted nouns ("crown", "flag", "west", "east") fixed it.
 
+`utm_jev.py` is itself a jevlang file, so Jev also runs the loop that drives
+the UTM: whether it has halted, whether a simulated step has begun, whether
+to stop, and whether each rule writes or keeps and moves east or west. Only
+the checker is plain Python. That is about five calls per UTM step; two
+simulated steps took 1,566 calls and seven minutes, with every decision
+right. Two things made the driver work:
+
+- Asking in words, not Python. With `sim_steps == target` Jev said 1 equals
+  2 and stopped a step early; the steps left are now a list that is `empty`
+  or not. `if __name__ == "__main__":` was a coin flip (Jev never sees
+  dunders), and so was `running_as is "__main__"`; the file now asks
+  `how_this_file_runs is "run as a script"`.
+- Leaving out the source excerpt (`# jev: no-source`). With the excerpt,
+  `direction == "east"` (direction "east") scored p=0.37; without, 0.94.
+
+Some of the driver's answers were still close (as low as 0.10 confidence,
+though never wrong), so the full six steps would be a gamble.
+
 With an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
 which speaks the same typed API as TypeSafe's own endpoint.

@@ -136,10 +136,9 @@ def main(target=2):
             phase, previous = Run.state, Run.previous
     except utm.WrongChoice as wrong:
         print(f"\nJev went wrong: {wrong}")
+        Run.completed -= 1  # counted when the step began, so not finished
     if phase is "halt":
         report("halted")
-    else:
-        Run.completed -= 1  # counted when the step began, so not finished
 
     print(f"\n{Run.utm_steps} UTM steps, every rule and every step of the loop decided "
           f"by Jev ({runtime.calls_made - calls_at_start} calls).")
