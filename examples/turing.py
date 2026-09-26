@@ -10,6 +10,8 @@
 #   python examples/turing.py increment 111
 #   python examples/turing.py beaver           # the 2-state busy beaver
 #   python examples/turing.py beaver3          # the 3-state busy beaver
+#   python examples/turing.py wolfram          # Wolfram's universal (2,3) machine
+#   python examples/turing.py wolfram "" 40    # ... for 40 steps
 import sys
 
 
@@ -54,19 +56,44 @@ def machines():
                 ("in state C on a 1", "leave it, move left and switch to state A"),
             ],
         },
+        "wolfram": {
+            "about": "Wolfram's 2-state, 3-symbol machine, the smallest known "
+                     "universal Turing machine. It never halts; this runs 20 steps.",
+            "tape": "",
+            "start": "A",
+            "states": ["A", "B"],
+            "blank": "0",
+            "max_steps": 20,
+            "rules": [
+                ("in state A on a 0", "write a 1, move right and switch to state B"),
+                ("in state A on a 1", "write a 2, move left and stay in state A"),
+                ("in state A on a 2", "write a 1, move left and stay in state A"),
+                ("in state B on a 0", "write a 2, move left and switch to state A"),
+                ("in state B on a 1", "write a 2, move right and stay in state B"),
+                ("in state B on a 2", "write a 0, move right and switch to state A"),
+            ],
+        },
     }
 
 
 def compile_rule(action, states):
-    """Ask Jev what `action` does, one literal question at a time."""
+    """Ask Jev what `action` does."""
+    # What to write and which way to move are each one Choice, weighing the
+    # options against each other.  Asked as separate yes/no questions, Jev
+    # was unsure about digits ("write a 1" came out as writing a 0) and
+    # read "leave it alone and move right" as moving left.
     write = "unchanged"
-    for symbol in ["0", "1", "blank"]:
-        if action writes symbol onto the tape:
-            write = symbol
-            break
-    # Left, right and staying put are exclusive, so one Choice weighs them
-    # against each other.  (Asked separately, "leave it alone and move
-    # right" once came out as moving left.)
+    match action:
+        case writing a 0:
+            write = "0"
+        case writing a 1:
+            write = "1"
+        case writing a 2:
+            write = "2"
+        case writing a blank or erasing the square:
+            write = "blank"
+        case not writing anything: leaving the square alone, only moving or changing state:
+            write = "unchanged"
     match action:
         case moving the head to the left:
             move = -1
@@ -89,17 +116,18 @@ def find_rule(conditions, state, symbol):
     return "nothing"
 
 
-def show(tape, head, state):
+def show(tape, head, state, blank):
     lo, hi = min([*tape, head]), max([*tape, head])
-    cells = [{"blank": "_"}.get(tape.get(i, "blank"), tape.get(i, "blank")) for i in range(lo, hi + 1)]
+    cells = [{"blank": "_"}.get(tape.get(i, blank), tape.get(i, blank)) for i in range(lo, hi + 1)]
     print(f"  {' '.join(cells)}    [{state}]")
     print("  " + "  " * (head - lo) + "^")
 
 
-def run(name, tape_text):
+def run(name, tape_text, max_steps=None):
     machine = machines()[name]
     print(f"{name}: {machine['about']}\n")
     print("Compiling the rules:")
+    blank = machine.get("blank", "blank")
     program = {when: compile_rule(do, machine["states"]) for when, do in machine["rules"]}
     for when, do in machine["rules"]:
         op = program[when]
@@ -109,9 +137,12 @@ def run(name, tape_text):
 
     tape = {i: symbol for i, symbol in enumerate(tape_text)}
     head, state, steps = 0, machine["start"], 0
-    while state is not halted:
-        symbol = tape.get(head, "blank")
-        show(tape, head, state)
+    # A for loop, not `while steps < limit`: Jev isn't a calculator.
+    for _ in range(max_steps or machine.get("max_steps", 1000)):
+        if state is halted:
+            break
+        symbol = tape.get(head, blank)
+        show(tape, head, state, blank)
         rule = find_rule(list(program), state, symbol)
         if rule is nothing:
             print(f"No rule covers {state!r} reading {symbol!r}. The machine is stuck.")
@@ -121,11 +152,17 @@ def run(name, tape_text):
         head += chosen["move"]
         state = {"same": state}.get(chosen["next"], chosen["next"])
         steps += 1
-    show(tape, head, state)
+    show(tape, head, state, blank)
     lo, hi = min(tape), max(tape)
-    result = "".join(tape.get(i, "blank") for i in range(lo, hi + 1)).replace("blank", "_").strip("_")
-    print(f"\nHalted after {steps} steps. Tape: {result}")
+    result = "".join(tape.get(i, blank) for i in range(lo, hi + 1)).replace("blank", "_").strip("_")
+    if state is halted:
+        print(f"\nHalted after {steps} steps. Tape: {result}")
+    else:
+        print(f"\nStopped after {steps} steps without halting. Tape: {result}")
 
 
 args = sys.argv[1:]
-run(args[0] if args else "increment", args[1] if len(args) > 1 else machines()[args[0] if args else "increment"]["tape"])
+name = args[0] if args else "increment"
+run(name,
+    args[1] if len(args) > 1 else machines()[name]["tape"],
+    int(args[2]) if len(args) > 2 else None)

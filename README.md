@@ -181,6 +181,24 @@ Halted after 8 steps. Tape: 1100
 four 1s), and `beaver3` the 3-state one (14 steps, six 1s). Each run is
 about 50 calls, or about 120 for `beaver3`.
 
+`python examples/turing.py wolfram` runs Wolfram's 2-state, 3-symbol machine,
+the smallest known universal Turing machine. Six English rules:
+
+```python
+("in state A on a 0", "write a 1, move right and switch to state B"),
+("in state A on a 1", "write a 2, move left and stay in state A"),
+("in state A on a 2", "write a 1, move left and stay in state A"),
+("in state B on a 0", "write a 2, move left and switch to state A"),
+("in state B on a 1", "write a 2, move right and stay in state B"),
+("in state B on a 2", "write a 0, move right and switch to state A"),
+```
+
+It never halts, so it runs 20 steps by default (`wolfram "" 40` for 40).
+Its universality goes through elaborate encodings of other systems, so
+don't expect it to compute anything you'd recognise, but the tape it
+leaves after 20 steps (`1 1 2 2 0 1 0`, head on the last square, state B)
+matches a plain-Python run of the same table.
+
 With an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
 which speaks the same typed API as TypeSafe's own endpoint.
