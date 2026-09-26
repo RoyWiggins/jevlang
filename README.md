@@ -59,8 +59,28 @@ Use `python -m jevlang --show FILE` to see the rewritten source.
 
 ## Install
 
+With [uv](https://docs.astral.sh/uv/):
+
 ```
-pip install .                     # installs the package and jevlang.pth
+uv sync                                  # .venv with jevlang, the TypeSafe SDK and pytest
+uv run python examples/bottles.py        # `# coding: jev` files run with plain python
+uv run jevlang examples/weather.py       # or through the CLI
+```
+
+`uv sync` installs jevlang in editable mode, including `jevlang.pth`, which
+registers the codec at startup, so edits under `src/` take effect without
+reinstalling.
+
+To use jevlang in your own uv project:
+
+```
+uv add 'jevlang[jev] @ git+https://github.com/roywiggins/jevlang'
+```
+
+With pip:
+
+```
+pip install '.[jev]'              # installs the package and jevlang.pth
 python examples/bottles.py
 ```
 
@@ -68,7 +88,7 @@ Without installing the `.pth`, run files through the CLI instead:
 
 ```
 python -m jevlang examples/weather.py [args...]
-python -m jevlang --install-pth [--user]    # write jevlang.pth by hand (e.g. editable installs)
+python -m jevlang --install-pth [--user]    # write jevlang.pth by hand
 ```
 
 ## Backends
@@ -79,15 +99,14 @@ Pick one with `$JEV_BACKEND`:
 |--------|--------------|
 | `fake` | Default while there's no API key. Offline and deterministic. Evaluates conditions that are valid Python as Python, and has keyword heuristics for English: it finds the variable you mention (`bottles`, allowing plurals and `snake_case` → words), then handles comparisons (`more than 10`, `at least three`, `fewer than limit`), `even`/`odd`/`positive`/`negative`, and negation (`no`, `not`, `n't`, `empty`, `out of`, ...), or falls back to the variable's truthiness. If it can't tell what you mean, the answer is `False`. |
 | `ask`  | You are Jev: shows the full request on stderr and reads `y`/`n` (or a case number) from the terminal. |
-| `jev`  | The real Jev, via the [TypeSafe SDK](https://docs.typesafe.ai/sdk/python) (`pip install '.[jev]'`). Used by default when `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` is set. Conditions are asked as a Noul (probability of yes; true at ≥ `JEV_THRESHOLD`, default 0.5), `match` as a Choice between the cases plus `none`. |
+| `jev`  | The real Jev, via the [TypeSafe SDK](https://docs.typesafe.ai/sdk/python) (included by `uv sync`; with pip, `pip install '.[jev]'`). Used by default when `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` is set. Conditions are asked as a Noul (probability of yes; true at ≥ `JEV_THRESHOLD`, default 0.5), `match` as a Choice between the cases plus `none`. |
 | `pkg.mod:factory` | Any object with a `decide(request) -> Decision` method. |
 
 ### Using the real Jev
 
 ```
-pip install '.[jev]'
 export OPENROUTER_API_KEY=sk-or-...   # or TYPESAFE_API_KEY from https://console.typesafe.ai/
-JEV_TRACE=1 python examples/reviews.py
+JEV_TRACE=1 uv run python examples/reviews.py
 ```
 
 ```
@@ -206,8 +225,7 @@ loop's trace says what was being decided.
 ## Tests
 
 ```
-pip install pytest typesafe-sdk
-pytest
+uv run pytest
 ```
 
 The `jev` backend's tests run the real SDK against a mocked transport, so
