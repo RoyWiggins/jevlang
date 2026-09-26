@@ -147,3 +147,26 @@ def test_call_budget_defaults(monkeypatch):
     assert runtime.max_calls(Billable()) == runtime.DEFAULT_MAX_CALLS
     monkeypatch.setenv("JEV_MAX_CALLS", "0")
     assert runtime.max_calls(Billable()) is None
+
+
+def test_roll_uses_probability(tmp_path, monkeypatch):
+    class Coin(FakeJev):
+        def decide(self, req):
+            return runtime.Decision(True, 0.4)  # p = 0.7
+
+    runtime.set_backend(Coin())
+    monkeypatch.setattr(runtime, "_rng", __import__("random").Random(1))
+    ns = run(textwrap.dedent("""\
+        # coding: jev
+        hits = 0
+        for _ in range(1000):
+            if the dice like us:  # jev: roll
+                hits += 1
+        """), tmp_path)
+    assert 650 < ns["hits"] < 750
+    assert runtime.last_decision.odds == pytest.approx(0.7)
+
+
+def test_decision_probability():
+    assert runtime.Decision(True, 0.4).probability == pytest.approx(0.7)
+    assert runtime.Decision(False, 0.4).probability == pytest.approx(0.3)

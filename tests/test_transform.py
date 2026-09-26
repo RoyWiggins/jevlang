@@ -86,3 +86,10 @@ def test_english_guard_on_python_pattern():
     assert split_guard("(x, y) if it looks far away") == ("(x, y)", "it looks far away", False)
     assert split_guard("(x, y) if x > y") == ("[x, y]", "x > y", True)
     assert split_guard("something vague") is None
+
+
+def test_roll_comment():
+    out = transform("if the plan works:  # jev: roll\n    pass\nif plain:  # just a comment\n    pass\n")
+    lines = out.splitlines()
+    assert lines[0].endswith("locals(), 'roll'):")
+    assert lines[2].endswith("locals()):")

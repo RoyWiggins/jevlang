@@ -38,13 +38,15 @@ __all__ = ["transform", "pattern_captures", "split_guard", "JEV"]
 # ``d[1:2]`` or ``lambda x: x`` are kept as part of it.
 HEADER_RE = re.compile(
     r"^(?P<indent>[ \t]*)(?P<kw>if|elif|while|match|case)"
-    r"(?=[\s(\[{'\"])\s*(?P<cond>.+?)\s*:\s*(?:#.*)?$"
+    r"(?=[\s(\[{'\"])\s*(?P<cond>.+?)\s*:\s*(?P<comment>#.*)?$"
 )
 
 # Every rewritten header calls this.  It finds (or creates) the module's
 # Session through globals(), so no setup code has to be injected -- which
 # matters because the file-run path discards whatever we'd put on line 1.
 JEV = "__import__('jevlang.runtime').runtime.session(globals())"
+
+ROLL_RE = re.compile(r"\bjev:\s*roll\b")
 
 MATCHING_KWS = {"if", "elif", "while", "match"}
 
@@ -218,7 +220,11 @@ def transform(source: str) -> str:
         lineno = idx + 1
         indent, kw, cond = m["indent"], m["kw"], m["cond"]
         if kw != "match":
-            ln.replacement = f"{indent}{kw} {JEV}.cond({kw!r}, {cond!r}, {lineno}, locals()):"
+            # `if the plan works:  # jev: roll` -> true with Jev's probability.
+            roll = ", 'roll'" if m["comment"] and ROLL_RE.search(m["comment"]) else ""
+            ln.replacement = (
+                f"{indent}{kw} {JEV}.cond({kw!r}, {cond!r}, {lineno}, locals(){roll}):"
+            )
             continue
 
         cases = []

@@ -10,6 +10,7 @@ decide.
 from __future__ import annotations
 
 import os
+import random
 import re
 import sys
 import types
@@ -110,6 +111,17 @@ class Decision:
     value: Any  # bool for conditions, case index (-1 = none) for match
     confidence: float = 1.0
     reason: str = ""
+    odds: float | None = None  # for `# jev: roll`: the p the dice were rolled against
+
+    @property
+    def probability(self) -> float:
+        """For a condition, the probability that it's true.
+
+        Backends report confidence as |2p - 1| (distance from a coin flip),
+        so p comes back out of the answer and its confidence.
+        """
+        c = min(max(self.confidence, 0.0), 1.0)
+        return (1 + c) / 2 if self.value else (1 - c) / 2
 
 
 def _short_repr(value: Any, limit: int = 200) -> str:
@@ -185,6 +197,16 @@ def set_backend(backend) -> None:
     """Install a backend object (anything with a ``decide(request)`` method)."""
     global _backend
     _backend = backend
+
+
+# --------------------------------------------------------------------------
+# Dice for `# jev: roll`; set $JEV_SEED for repeatable runs.
+
+_rng = random.Random(os.environ.get("JEV_SEED"))
+
+#: The most recent condition's Decision, for programs that want to show the
+#: odds (``decision.probability``).
+last_decision: "Decision | None" = None
 
 
 # --------------------------------------------------------------------------
@@ -307,9 +329,18 @@ class Session:
                 file=sys.stderr,
             )
 
-    def cond(self, kind: str, text: str, lineno: int, local_vars: dict) -> bool:
+    def cond(self, kind: str, text: str, lineno: int, local_vars: dict,
+             mode: str | None = None) -> bool:
+        """Decide a condition.  With ``mode="roll"`` (from a ``# jev: roll``
+        comment) the answer is random: true with Jev's probability."""
+        global last_decision
         req = self._request(kind, text, lineno, local_vars)
         decision = decide(req)
+        if mode == "roll":
+            p, roll = decision.probability, _rng.random()
+            decision = Decision(roll < p, decision.confidence,
+                                f"rolled {roll:.2f} vs p={p:.2f}", odds=p)
+        last_decision = decision
         self._log(req, decision)
         return bool(decision.value)
 

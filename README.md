@@ -120,6 +120,14 @@ mean, and whether a free-form action works. "rummage through the hay"
 finds the key hidden in the straw; "toss the bone to the doggo" calms the
 dog. A full playthrough is about 50 calls.
 
+`examples/tower.py`, "The Wizard's Tower", is a bigger adventure with Jev as
+game master. A troll accepts any valid answer to its riddle ("a shirt" works
+as well as "a bottle"). Jev decides whether anything you carry lights the
+dark cellar. A gloomy ghost lets you pass only if your joke would make it
+laugh, and a sleeping dragon stays asleep only if you're gentle enough.
+Hints are ordered in code, with Jev checking each condition. A playthrough is
+about 130 calls (`JEV_MAX_CALLS=300`).
+
 With only an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
 which speaks the same typed API as TypeSafe's own endpoint. (OpenRouter's
@@ -154,6 +162,20 @@ Other knobs: `JEV_MODEL` (or the SDK's own `TYPESAFE_BASE_URL` and
 conditions that are already valid Python locally instead of asking. Jev's
 docs say it is [not a calculator](https://docs.typesafe.ai/model-jaggedness/jev-1.13.md),
 so `if n % 15 == 0:` is a better job for Python.
+
+### Probabilistic branches
+
+Add `# jev: roll` to a header and the branch is taken *with* Jev's
+probability instead of whenever p ≥ 0.5:
+
+```python
+if what_you_said would make a gloomy ghost laugh:  # jev: roll
+    ...
+```
+
+A joke Jev rates at p=0.7 works about 70% of the time. `JEV_SEED` makes the
+dice repeatable, and `jevlang.runtime.last_decision.odds` holds the p the
+last roll used, so a game can show the odds.
 
 Set `JEV_TRACE=1` to log every decision to stderr:
 
