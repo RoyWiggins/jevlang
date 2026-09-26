@@ -15,7 +15,7 @@ import types
 from dataclasses import dataclass, field
 from typing import Any
 
-from .transform import pattern_captures
+from .transform import pattern_captures, split_guard
 
 __all__ = [
     "session",
@@ -60,6 +60,21 @@ class Request:
     globals: dict[str, Any] = field(default_factory=dict, repr=False)
     locals: dict[str, Any] = field(default_factory=dict, repr=False)
 
+    def state(self) -> dict:
+        """The request as JSON, for Jev's ``state`` field."""
+        state = {
+            "source": self.code,
+            "line": self.lineno,
+            "variables": {k: _jsonable(v) for k, v in self.variables.items()},
+        }
+        if self.iteration:
+            state["times_this_line_was_evaluated_before"] = self.iteration
+        if self.kind == "match":
+            state["match_subject"] = {"text": self.text}
+            if self.subject is not NOVALUE:
+                state["match_subject"]["value"] = _jsonable(self.subject)
+        return state
+
     def prompt(self) -> str:
         """Render the request as the text sent to a real model."""
         vars_ = "\n".join(
@@ -102,6 +117,25 @@ def _short_repr(value: Any, limit: int = 200) -> str:
     return r if len(r) <= limit else r[: limit - 3] + "..."
 
 
+def _jsonable(value: Any, depth: int = 0) -> Any:
+    """``value`` as JSON: scalars as themselves, small containers
+    recursively, anything else as a (truncated) repr."""
+    if value is None or isinstance(value, (bool, int, str)):
+        return value if not isinstance(value, str) else _truncate(value)
+    if isinstance(value, float):
+        return value if value == value and abs(value) != float("inf") else repr(value)
+    if depth < 3:
+        if isinstance(value, (list, tuple, set, frozenset)) and len(value) <= 50:
+            return [_jsonable(v, depth + 1) for v in value]
+        if isinstance(value, dict) and len(value) <= 50:
+            return {str(k): _jsonable(v, depth + 1) for k, v in value.items()}
+    return _short_repr(value)
+
+
+def _truncate(s: str, limit: int = 1000) -> str:
+    return s if len(s) <= limit else s[: limit - 3] + "..."
+
+
 def _interesting(name: str, value: Any) -> bool:
     if name.startswith("__"):
         return False
@@ -128,14 +162,14 @@ def get_backend():
     """The active backend, chosen from ``$JEV_BACKEND`` on first use.
 
     ``fake`` (default without an API key), ``ask`` (you are Jev), or
-    ``http`` (the real Jev API; default when ``$JEV_API_KEY`` is set).
+    ``jev`` (the real Jev API; default when ``$TYPESAFE_API_KEY`` is set).
     """
     global _backend
     if _backend is None:
         from . import backends
 
         name = os.environ.get("JEV_BACKEND") or (
-            "http" if os.environ.get("JEV_API_KEY") else "fake"
+            "jev" if os.environ.get("TYPESAFE_API_KEY") else "fake"
         )
         _backend = backends.by_name(name)
     return _backend
@@ -255,15 +289,22 @@ class Session:
         return (index, bindings)
 
 
-def try_pattern(pattern: str, subject: Any, globals_: dict, locals_: dict) -> dict | None:
-    """Match ``subject`` against a Python ``case`` pattern (guard included).
+def try_pattern(pattern: str, subject: Any, globals_: dict, locals_: dict,
+                judge_guard=None) -> dict | None:
+    """Match ``subject`` against a ``case`` pattern and its guard.
 
-    Returns the captured names on success, ``None`` on failure or if the
-    pattern isn't Python.
+    Returns the captured names on success, ``None`` on failure or if there is
+    no Python pattern.  A Python guard is evaluated; an English one is passed
+    to ``judge_guard(guard, bindings)`` if given, and otherwise assumed true
+    (Jev already chose this case).
     """
-    captures = pattern_captures(pattern)
-    if captures is None or subject is NOVALUE:
+    split = split_guard(pattern)
+    if split is None or subject is NOVALUE:
         return None
+    pattern, guard, guard_is_python = split
+    captures = pattern_captures(pattern)
+    if guard_is_python and guard:
+        pattern = f"{pattern} if {guard}"
     code = (
         "match __jev_subject__:\n"
         f" case {pattern}:\n"
@@ -273,4 +314,7 @@ def try_pattern(pattern: str, subject: Any, globals_: dict, locals_: dict) -> di
     exec(compile(code, "<jev-case>", "exec"), ns)
     if not ns["__jev_hit__"]:
         return None
-    return {name: ns[name] for name in captures}
+    bindings = {name: ns[name] for name in captures}
+    if guard and not guard_is_python and judge_guard and not judge_guard(guard, bindings):
+        return None
+    return bindings

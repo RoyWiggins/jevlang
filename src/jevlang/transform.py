@@ -30,7 +30,7 @@ import ast
 import re
 from dataclasses import dataclass
 
-__all__ = ["transform", "pattern_captures", "JEV"]
+__all__ = ["transform", "pattern_captures", "split_guard", "JEV"]
 
 # Block header: keyword, then the condition, then a colon, then optionally a
 # comment.  The condition is non-greedy, but because what follows the colon
@@ -131,16 +131,41 @@ def _is_python(expr: str, mode: str = "eval") -> bool:
     return True
 
 
-def pattern_captures(pattern: str) -> list[str] | None:
-    """Names bound by a ``case`` pattern (guard allowed), or ``None`` if the
-    pattern is not valid Python."""
+def split_guard(case: str) -> tuple[str, str | None, bool] | None:
+    """Split ``case`` text into ``(pattern, guard, guard_is_python)``.
+
+    Returns ``None`` if no prefix of it is a Python pattern.  The guard may be
+    English: ``(x, y) if it looks far away`` is a real pattern with a guard
+    only Jev can judge.
+    """
     try:
-        tree = ast.parse(f"match _:\n case {pattern}:\n  pass")
+        tree = ast.parse(f"match _:\n case {case}:\n  pass")
     except SyntaxError:
+        pass
+    else:
+        c = tree.body[0].cases[0]
+        if c.guard is None:
+            return case, None, True
+        return ast.unparse(c.pattern), ast.unparse(c.guard), True
+    for m in re.finditer(r"\s+if\s+", case):
+        pattern = case[: m.start()]
+        try:
+            ast.parse(f"match _:\n case {pattern}:\n  pass")
+        except SyntaxError:
+            continue
+        return pattern, case[m.end():], False
+    return None
+
+
+def pattern_captures(case: str) -> list[str] | None:
+    """Names bound by a ``case`` pattern (a guard, even an English one, is
+    allowed), or ``None`` if there is no Python pattern in it."""
+    split = split_guard(case)
+    if split is None:
         return None
-    case = tree.body[0].cases[0]
+    tree = ast.parse(f"match _:\n case {split[0]}:\n  pass")
     names: list[str] = []
-    for node in ast.walk(case.pattern):
+    for node in ast.walk(tree.body[0].cases[0].pattern):
         name = None
         if isinstance(node, (ast.MatchAs, ast.MatchStar)):
             name = node.name

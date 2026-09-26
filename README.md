@@ -1,7 +1,7 @@
 # jevlang
 
 Python where every `if`, `elif`, `while` and `match` is decided by
-[Jev](https://jevai.net/) — which means the conditions don't have to be
+[Jev](https://jevai.net/), TypeSafe's "System One" decision model — which means the conditions don't have to be
 Python at all:
 
 ```python
@@ -79,8 +79,38 @@ Pick one with `$JEV_BACKEND`:
 |--------|--------------|
 | `fake` | Default while there's no API key. Offline and deterministic. Evaluates conditions that are valid Python as Python, and has keyword heuristics for English: it finds the variable you mention (`bottles`, allowing plurals and `snake_case` → words), then handles comparisons (`more than 10`, `at least three`, `fewer than limit`), `even`/`odd`/`positive`/`negative`, and negation (`no`, `not`, `n't`, `empty`, `out of`, ...), or falls back to the variable's truthiness. If it can't tell what you mean, the answer is `False`. |
 | `ask`  | You are Jev: shows the full request on stderr and reads `y`/`n` (or a case number) from the terminal. |
-| `http` | The real Jev API, `POST $JEV_API_URL/v1/decide` with `Authorization: Bearer $JEV_API_KEY`. Used by default when `JEV_API_KEY` is set. **Untested**: the payload follows the example on jevai.net (`{"input": prompt, "schema": {"answer": "boolean"}}`, or `{"case": "number"}` for `match`) until we have a key. |
+| `jev`  | The real Jev, via the [TypeSafe SDK](https://docs.typesafe.ai/sdk/python) (`pip install '.[jev]'`). Used by default when `TYPESAFE_API_KEY` is set. Conditions are asked as a Noul (probability of yes; true at ≥ `JEV_THRESHOLD`, default 0.5), `match` as a Choice between the cases plus `none`. |
 | `pkg.mod:factory` | Any object with a `decide(request) -> Decision` method. |
+
+### Using the real Jev
+
+```
+pip install '.[jev]'
+export TYPESAFE_API_KEY=...      # from https://console.typesafe.ai/
+JEV_TRACE=1 python examples/bottles.py
+```
+
+Each decision is one `system_one` call. The `state` is JSON:
+
+```json
+{
+  "source": "   1 | # coding: jev\n   2 | bottles = 99\n-->3 | while there are bottles left:\n...",
+  "line": 3,
+  "variables": {"bottles": 98},
+  "times_this_line_was_evaluated_before": 1
+}
+```
+
+and the question is a Noul whose instructions name the `condition`
+(`"there are bottles left"`). For `match`, `state` also has
+`match_subject` (its text and, when it's Python, its value), and the Choice's
+options are `case_0`, `case_1`, ... described by the case source.
+
+Other knobs: the SDK's own `TYPESAFE_BASE_URL` and `TYPESAFE_DEFAULT_MODEL`
+(default `jev-latest`); `JEV_THRESHOLD`; and `JEV_LOCAL_PYTHON=1`, which evaluates
+conditions that are already valid Python locally instead of asking. Jev's
+docs say it is [not a calculator](https://docs.typesafe.ai/model-jaggedness/jev-1.13.md),
+so `if n % 15 == 0:` is a better job for Python.
 
 Set `JEV_TRACE=1` to log every decision to stderr:
 
@@ -94,8 +124,9 @@ Set `JEV_TRACE=1` to log every decision to stderr:
 
 - Headers must be the block form ending in `:` on one line (`if x: y` on a
   single line is left alone). A trailing `# comment` after the colon is fine.
-- Every condition goes through the backend, including plain Python ones.
-  With the real API that's one request per loop iteration.
+- Every condition goes through the backend, including plain Python ones
+  (unless `JEV_LOCAL_PYTHON=1`). With the real API that's one request per
+  loop iteration.
 - A bare single word in a `case` is a Python capture pattern (it matches
   everything); quote it if you mean the string.
 - Imported modules are cached as `.pyc` like any other. If you upgrade
@@ -107,6 +138,9 @@ Set `JEV_TRACE=1` to log every decision to stderr:
 ## Tests
 
 ```
-pip install pytest
+pip install pytest typesafe-sdk
 pytest
 ```
+
+The `jev` backend's tests run the real SDK against a mocked transport, so
+they check the request/response format without an API key.

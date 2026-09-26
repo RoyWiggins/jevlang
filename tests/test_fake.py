@@ -63,14 +63,10 @@ def test_english_that_parses_as_python_falls_back():
     assert jev.decide(req).value is True
 
 
-def test_http_payload_shape(monkeypatch):
-    from jevlang.backends import JevHTTP
 
-    sent = []
-    client = JevHTTP(api_key="test")
-    monkeypatch.setattr(client, "post", lambda p: sent.append(p) or {"answer": True, "confidence": 0.97})
-    d = client.decide(request("while", "there are bottles left", {"bottles": 3}))
-    assert (d.value, d.confidence) == (True, 0.97)
-    assert sent[0]["schema"] == {"answer": "boolean"}
-    assert "bottles = 3" in sent[0]["input"]
-    assert "there are bottles left" in sent[0]["input"]
+def test_match_english_guard_is_judged():
+    cases = [("[x, *rest] if there are more than 3 rest", ["x", "rest"]), ("_", [])]
+    short = request("match", "xs", {}, subject=[1, 2], cases=cases)
+    long = request("match", "xs", {}, subject=[1, 2, 3, 4, 5], cases=cases)
+    assert jev.decide(short).value == 1
+    assert jev.decide(long).value == 0

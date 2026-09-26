@@ -77,3 +77,12 @@ def test_pattern_captures():
     assert set(pattern_captures("{'k': v, **kw}")) == {"v", "kw"}
     assert pattern_captures("Point(x=0) as p") == ["p"]
     assert pattern_captures("something odd") is None
+
+
+def test_english_guard_on_python_pattern():
+    from jevlang.transform import split_guard
+
+    assert pattern_captures("(x, y) if it looks far away") == ["x", "y"]
+    assert split_guard("(x, y) if it looks far away") == ("(x, y)", "it looks far away", False)
+    assert split_guard("(x, y) if x > y") == ("[x, y]", "x > y", True)
+    assert split_guard("something vague") is None

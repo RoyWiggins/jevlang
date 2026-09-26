@@ -6,35 +6,33 @@ A backend is any object with ``decide(request: Request) -> Decision``.
   uses a handful of keyword heuristics for English ("there are bottles
   left", "x is more than 10", "the list is empty", ...).
 * :class:`AskJev`  -- prints the request and lets *you* be Jev.
-* :class:`JevHTTP` -- the real thing, via ``POST /v1/decide``.  Untested:
-  written against the example on https://jevai.net/ while waiting for a key.
+* :class:`Jev`     -- the real thing, via TypeSafe's SDK
+  (https://docs.typesafe.ai/sdk/python).
 """
 
 from __future__ import annotations
 
 import importlib
-import json
 import os
 import re
 import sys
-import urllib.request
 from typing import Any
 
 from .runtime import NOVALUE, Decision, Request, try_pattern
 
-__all__ = ["FakeJev", "AskJev", "JevHTTP", "by_name"]
+__all__ = ["FakeJev", "AskJev", "Jev", "by_name"]
 
 
 def by_name(name: str):
-    """Build a backend from a name: ``fake``, ``ask``, ``http`` or
+    """Build a backend from a name: ``fake``, ``ask``, ``jev`` or
     ``package.module:factory``."""
     if ":" in name:
         mod, _, attr = name.partition(":")
         return getattr(importlib.import_module(mod), attr)()
     try:
-        return {"fake": FakeJev, "ask": AskJev, "http": JevHTTP}[name.lower()]()
+        return {"fake": FakeJev, "ask": AskJev, "jev": Jev}[name.lower()]()
     except KeyError:
-        raise ValueError(f"unknown JEV_BACKEND {name!r} (try fake, ask or http)") from None
+        raise ValueError(f"unknown JEV_BACKEND {name!r} (try fake, ask or jev)") from None
 
 
 # --------------------------------------------------------------------------
@@ -204,7 +202,11 @@ class FakeJev:
                     if re.fullmatch(r"\s*[A-Za-z_]\w*\s*", pattern):  # `_` or capture
                         return Decision(i, 1.0, "wildcard")
                     continue
-                if try_pattern(pattern, subject, req.globals, req.locals) is not None:
+                def judge_guard(guard, bindings):
+                    verdict = self.judge(guard, {**req.variables, **bindings}, subject)
+                    return verdict.value and verdict.confidence > 0.5
+
+                if try_pattern(pattern, subject, req.globals, req.locals, judge_guard) is not None:
                     return Decision(i, 1.0, "python")
                 continue
             if isinstance(subject, str) and re.search(
@@ -255,50 +257,83 @@ class AskJev:
 
 
 # --------------------------------------------------------------------------
-# JevHTTP
+# Jev
 
 
-class JevHTTP:
-    """Client for the Jev decision API.
+class Jev:
+    """The real Jev, through TypeSafe's SDK (``pip install jevlang[jev]``).
 
-    Configured by ``$JEV_API_KEY`` and ``$JEV_API_URL`` (default
-    ``https://api.jevai.net``).  The request shape follows the public
-    example (``{"input": ..., "schema": {...}}`` -> typed values plus a
-    ``confidence``); the exact schema types and auth header are guesses
-    until we have access.
+    Conditions are asked as a Noul (probability of "yes"); ``match``
+    statements as a Choice between the cases plus ``none``.  The variables
+    and surrounding source go in ``state`` (see :meth:`Request.state`).
+
+    The SDK reads ``$TYPESAFE_API_KEY``, ``$TYPESAFE_BASE_URL`` and
+    ``$TYPESAFE_DEFAULT_MODEL``.  Ours:
+
+    * ``$JEV_THRESHOLD`` -- probability at which a condition is true (0.5)
+    * ``$JEV_LOCAL_PYTHON=1`` -- evaluate conditions that are valid Python
+      locally instead of asking (Jev is not a calculator)
     """
 
-    def __init__(self, api_key: str | None = None, url: str | None = None,
-                 timeout: float = 10.0):
-        self.api_key = api_key or os.environ.get("JEV_API_KEY")
-        if not self.api_key:
-            raise RuntimeError("JevHTTP needs an API key: set $JEV_API_KEY")
-        self.url = (url or os.environ.get("JEV_API_URL") or "https://api.jevai.net").rstrip("/")
-        self.timeout = timeout
+    NONE = "none"
 
-    def payload(self, req: Request) -> dict:
+    def __init__(self, client=None, threshold: float | None = None,
+                 local_python: bool | None = None, **client_options):
+        self._client = client
+        self._client_options = client_options
+        if threshold is None:
+            threshold = float(os.environ.get("JEV_THRESHOLD", 0.5))
+        self.threshold = threshold
+        if local_python is None:
+            local_python = bool(os.environ.get("JEV_LOCAL_PYTHON"))
+        self.local_python = local_python
+
+    @property
+    def client(self):
+        if self._client is None:
+            try:
+                from typesafe_sdk import TypeSafeClient
+            except ImportError:
+                raise RuntimeError(
+                    "the jev backend needs the TypeSafe SDK: pip install 'jevlang[jev]'"
+                ) from None
+            self._client = TypeSafeClient(**self._client_options)
+        return self._client
+
+    @staticmethod
+    def question(req: Request):
+        from typesafe_sdk import Choice, Noul
+
         if req.kind == "match":
-            schema = {"case": "number"}
-        else:
-            schema = {"answer": "boolean"}
-        return {"input": req.prompt(), "schema": schema}
-
-    def post(self, payload: dict) -> dict:
-        request = urllib.request.Request(
-            self.url + "/v1/decide",
-            data=json.dumps(payload).encode(),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}",
-            },
-            method="POST",
+            criteria = {f"case_{i}": f"case {pat}" for i, (pat, _) in enumerate(req.cases)}
+            criteria[Jev.NONE] = "None of the cases apply."
+            return Choice(
+                instructions=(
+                    "The `match` statement on the line marked `-->` in `source` "
+                    "compares `match_subject` against its cases. Given the current "
+                    "`variables`, which case applies?"
+                ),
+                criteria=criteria,
+            )
+        return Noul(
+            instructions={
+                "condition": req.text,
+                "question": (
+                    f"The `{req.kind}` statement on the line marked `-->` in `source` "
+                    "tests `condition`. Given the current `variables`, is `condition` "
+                    "true right now?"
+                ),
+            }
         )
-        with urllib.request.urlopen(request, timeout=self.timeout) as resp:
-            return json.load(resp)
 
     def decide(self, req: Request) -> Decision:
-        body = self.post(self.payload(req))
-        confidence = float(body.get("confidence", 1.0))
+        if self.local_python and req.kind != "match" and req.is_python:
+            return FakeJev().decide(req)
+        response = self.client.system_one(req.state(), {"decision": self.question(req)})
         if req.kind == "match":
-            return Decision(int(body["case"]), confidence, "jev")
-        return Decision(bool(body["answer"]), confidence, "jev")
+            answer = response.choices["decision"]
+            index = -1 if answer.choice == self.NONE else int(answer.choice.removeprefix("case_"))
+            return Decision(index, answer.confidence, f"p={answer.probabilities[answer.choice]:.2f}")
+        p = response.nouls["decision"].noul
+        # A Noul has no confidence field; distance from a coin flip will do.
+        return Decision(p >= self.threshold, abs(2 * p - 1), f"p={p:.2f}")
