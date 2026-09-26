@@ -158,10 +158,8 @@ which speaks the same typed API as TypeSafe's own endpoint.
 
 **Call budget.** A script stops with `JevBudgetExceeded` once it has asked
 Jev `JEVLANG_MAX_CALLS` times: 1000 by default with the real backend, so a
-runaway `while` can't drain your credits. Set it lower to be careful, higher
-for big programs, or `0` for no limit. The fake backend is
-free, so it's unlimited unless you set the variable. Trace lines are numbered
-(`[jev #12]`) so you can watch the count.
+runaway `while` can't drain your credits. `0` for no limit. The fake backend is
+free, so it's unlimited unless you set the variable. 
 
 Other knobs: `JEVLANG_MODEL` (or the SDK's own `TYPESAFE_BASE_URL` and
 `TYPESAFE_DEFAULT_MODEL`, default `jev-latest`); `JEVLANG_THRESHOLD`; and `JEVLANG_LOCAL_PYTHON=1`, which evaluates
