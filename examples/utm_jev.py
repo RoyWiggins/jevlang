@@ -147,9 +147,11 @@ def main(target=2):
           f"{'matching' if ok else 'NOT matching'} a direct simulation.")
 
 
-# `__name__` is hidden from Jev (it doesn't see dunders), so copy it out.
-running_as, arguments = __name__, sys.argv[1:]
-if running_as is "__main__":
+# Jev never sees `__name__` (it hides dunders), and shown "__main__" it
+# was a coin flip, so say it in words.
+how_this_file_runs = {"__main__": "run as a script"}.get(__name__, "imported")
+arguments = sys.argv[1:]
+if how_this_file_runs is "run as a script":
     if arguments include "--show":
         print(jevlang_source())
     else:
