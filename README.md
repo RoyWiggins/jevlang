@@ -1,6 +1,6 @@
 # jevlang
 
-Python where every `if`, `elif`, `while` and `match` is decided by
+Python where every `if`, `elif`, `while` and `match` (ternaries, list comprehension excepted) is decided by
 [Jev](https://jevai.net/), enabling *modern coding style*: conditionals no longer have to be Python at all:
 
 ```python
@@ -22,8 +22,7 @@ In fact, unless you set JEVLANG_LOCAL_PYTHON=1, even Python conditionals are eva
 
 ## How it works
 
-It's a source preprocessor built on Python's codec machinery (the same trick
-as [magic_codec](https://github.com/Tsche/magic_codec), explained in
+It's a source preprocessor built on Python's codec machinery (see
 [Python's preprocessor](https://pydong.org/articles/pythons-preprocessor/)).
 
 Each block header becomes a call into the runtime with the condition's
