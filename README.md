@@ -1,8 +1,7 @@
 # jevlang
 
 Python where every `if`, `elif`, `while` and `match` is decided by
-[Jev](https://jevai.net/), TypeSafe's "System One" decision model — which means the conditions don't have to be
-Python at all:
+[Jev](https://jevai.net/), enabling *modern coding style*: conditionals no longer have to be Python at all:
 
 ```python
 # coding: jev
@@ -19,26 +18,22 @@ $ python examples/bottles.py
 ...
 ```
 
+In fact, unless you set JEV_LOCAL_PYTHON=1, even Python conditionals are evaluated by Jev. Setting this is otherwise known as "Luddite mode". 
+
 ## How it works
 
 It's a source preprocessor built on Python's codec machinery (the same trick
 as [magic_codec](https://github.com/Tsche/magic_codec), explained in
-[Python's preprocessor](https://pydong.org/articles/pythons-preprocessor/)):
+[Python's preprocessor](https://pydong.org/articles/pythons-preprocessor/)).
 
-1. `jevlang.pth` in site-packages registers a codec named `jev` at startup.
-2. A file whose first or second line is `# coding: jev` is decoded by that
-   codec, which rewrites the source before the tokenizer sees it.
-3. Each block header becomes a call into the runtime with the condition's
+Each block header becomes a call into the runtime with the condition's
    text, its line number, and `locals()`:
 
    ```python
    while __import__('jevlang.runtime').runtime.session(globals()).cond('while', 'there are bottles left', 3, locals()):
    ```
 
-   Nothing else is added or removed, so line numbers in tracebacks still match
-   your file. The module's session is created on first use and reads the
-   original source from `__file__`.
-4. At runtime the session gathers the variables in scope, the surrounding
+At runtime the session gathers the variables in scope, the surrounding
    source (a few lines either side, with the current line marked) and how
    many times this line has been evaluated, and asks the backend for a
    decision.
@@ -71,12 +66,6 @@ uv run jevlang examples/weather.py       # or through the CLI
 registers the codec at startup, so edits under `src/` take effect without
 reinstalling.
 
-To use jevlang in your own uv project:
-
-```
-uv add 'jevlang[jev] @ git+https://github.com/roywiggins/jevlang'
-```
-
 With pip:
 
 ```
@@ -97,9 +86,9 @@ Pick one with `$JEV_BACKEND`:
 
 | name   | what it does |
 |--------|--------------|
-| `fake` | Default while there's no API key. Offline and deterministic. Evaluates conditions that are valid Python as Python, and has keyword heuristics for English: it finds the variable you mention (`bottles`, allowing plurals and `snake_case` → words), then handles comparisons (`more than 10`, `at least three`, `fewer than limit`), `even`/`odd`/`positive`/`negative`, and negation (`no`, `not`, `n't`, `empty`, `out of`, ...), or falls back to the variable's truthiness. If it can't tell what you mean, the answer is `False`. |
+| `fake` | Default while there's no API key. Offline and deterministic. Evaluates conditions that are valid Python as Python, and has keyword heuristics for English
 | `ask`  | You are Jev: shows the full request on stderr and reads `y`/`n` (or a case number) from the terminal. |
-| `jev`  | The real Jev, via the [TypeSafe SDK](https://docs.typesafe.ai/sdk/python) (included by `uv sync`; with pip, `pip install '.[jev]'`). Used by default when `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` is set. Conditions are asked as a Noul (probability of yes; true at ≥ `JEV_THRESHOLD`, default 0.5), `match` as a Choice between the cases plus `none`. |
+| `jev`  | The real Jev, via the [TypeSafe SDK](https://docs.typesafe.ai/sdk/python). Used by default when `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` is set. 
 | `pkg.mod:factory` | Any object with a `decide(request) -> Decision` method. |
 
 ### Using the real Jev
@@ -119,55 +108,21 @@ JEV_TRACE=1 uv run python examples/reviews.py
 ```
 
 `examples/fizzbuzz.py` is FizzBuzz with English conditions
-(`if n is divisible by both three and five:`). Jev gets all 15 right, though
-it's least sure at 10 (p=0.23 for "divisible by both", still a clear no).
-`examples/fizzbuzz_python.py` is the same program with Python conditions,
-which Jev is also asked about unless `JEV_LOCAL_PYTHON=1`.
+(`if n is divisible by both three and five:`).
 
-`examples/vibe_sort.py` bubble-sorts foods by spiciness with
-`if left is spicier than right:`. Name what you're comparing: pulling the pair
-into `left, right = foods[j], foods[j + 1]` matters. With the condition
-written as `foods[j] is spicier than foods[j + 1]`, Jev has to do the
-indexing itself. Its answers drift toward 0.5 (p=0.56–0.76 where the named
-version says 0.82–0.88), and it ranked bell pepper above habanero. The
-named version sorted correctly; the one close call is habanero vs. sriracha
-(p=0.59 in one run, 0.34 in another).
+`examples/vibe_sort.py` bubble-sorts foods by spiciness
 
 `examples/adventure.py` is a tiny text adventure where Jev decides
 everything: what you're trying to do, which way you mean, which object you
-mean, and whether a free-form action works. "rummage through the hay"
-finds the key hidden in the straw; "toss the bone to the doggo" calms the
-dog. A full playthrough is about 50 calls.
+mean, and whether a free-form action works.
 
 `examples/tower.py`, "The Wizard's Tower", is a bigger adventure with Jev as
-game master. A troll accepts any valid answer to its riddle ("a shirt" works
-as well as "a bottle"). Jev decides whether anything you carry lights the
-dark cellar. A gloomy ghost lets you pass only if your joke would make it
-laugh, and a sleeping dragon stays asleep only if you're gentle enough.
-Hints are ordered in code, with Jev checking each condition. A playthrough is
+game master. A playthrough is
 about 130 calls (`JEV_MAX_CALLS=300`).
 
-With only an OpenRouter key, requests go to OpenRouter's pass-through to Jev
+With an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
-which speaks the same typed API as TypeSafe's own endpoint. (OpenRouter's
-`typesafe/jev-router` is something else: a chat-completions router that
-forwards prompts to other LLMs and answers in prose, so it isn't used here.)
-
-Each decision is one `system_one` call. The `state` is JSON:
-
-```json
-{
-  "source": "   1 | # coding: jev\n   2 | bottles = 99\n-->3 | while there are bottles left:\n...",
-  "line": 3,
-  "variables": {"bottles": 98},
-  "times_this_line_was_evaluated_before": 1
-}
-```
-
-and the question is a Noul whose instructions name the `condition`
-(`"there are bottles left"`). For `match`, `state` also has
-`match_subject` (its text and, when it's Python, its value), and the Choice's
-options are `case_0`, `case_1`, ... described by the case source.
+which speaks the same typed API as TypeSafe's own endpoint.
 
 **Call budget.** A script stops with `JevBudgetExceeded` once it has asked
 Jev `JEV_MAX_CALLS` times: 100 by default with the real backend, so a
@@ -178,9 +133,7 @@ free, so it's unlimited unless you set the variable. Trace lines are numbered
 
 Other knobs: `JEV_MODEL` (or the SDK's own `TYPESAFE_BASE_URL` and
 `TYPESAFE_DEFAULT_MODEL`, default `jev-latest`); `JEV_THRESHOLD`; and `JEV_LOCAL_PYTHON=1`, which evaluates
-conditions that are already valid Python locally instead of asking. Jev's
-docs say it is [not a calculator](https://docs.typesafe.ai/model-jaggedness/jev-1.13.md),
-so `if n % 15 == 0:` is a better job for Python.
+conditions that are already valid Python locally instead of asking. This is known as "Luddite mode". 
 
 ### Probabilistic branches
 
@@ -192,7 +145,7 @@ if what_you_said would make a gloomy ghost laugh:  # jev: roll
     ...
 ```
 
-A joke Jev rates at p=0.7 works about 70% of the time. `JEV_SEED` makes the
+`JEV_SEED` makes the
 dice repeatable, and `jevlang.runtime.last_decision.odds` holds the p the
 last roll used, so a game can show the odds.
 
