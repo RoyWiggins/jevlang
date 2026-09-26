@@ -1,4 +1,4 @@
-# coding: jev
+# coding: jevlang
 temperature = 31
 forecast = "rain"
 umbrellas = []

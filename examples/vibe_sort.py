@@ -1,4 +1,4 @@
-# coding: jev
+# coding: jevlang
 # Bubble sort, mildest first, where the comparison is Jev's judgment.
 # Needs a real key: the fake backend can't taste anything.
 foods = ["ghost pepper", "ketchup", "jalapeño", "habanero", "bell pepper", "sriracha"]

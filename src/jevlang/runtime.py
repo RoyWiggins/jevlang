@@ -174,7 +174,7 @@ _backend = None
 
 
 def get_backend():
-    """The active backend, chosen from ``$JEV_BACKEND`` on first use.
+    """The active backend, chosen from ``$JEVLANG_BACKEND`` on first use.
 
     ``fake`` (default without an API key), ``ask`` (you are Jev), or
     ``jev`` (the real Jev API; default when ``$TYPESAFE_API_KEY`` or
@@ -184,7 +184,7 @@ def get_backend():
     if _backend is None:
         from . import backends
 
-        name = os.environ.get("JEV_BACKEND") or (
+        name = os.environ.get("JEVLANG_BACKEND") or (
             "jev"
             if os.environ.get("TYPESAFE_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
             else "fake"
@@ -200,9 +200,9 @@ def set_backend(backend) -> None:
 
 
 # --------------------------------------------------------------------------
-# Dice for `# jev: roll`; set $JEV_SEED for repeatable runs.
+# Dice for `# jev: roll`; set $JEVLANG_SEED for repeatable runs.
 
-_rng = random.Random(os.environ.get("JEV_SEED"))
+_rng = random.Random(os.environ.get("JEVLANG_SEED"))
 
 #: The most recent condition's Decision, for programs that want to show the
 #: odds (``decision.probability``).
@@ -212,22 +212,22 @@ last_decision: "Decision | None" = None
 # --------------------------------------------------------------------------
 # Call budget
 
-DEFAULT_MAX_CALLS = 100  # for backends that cost money; see max_calls()
+DEFAULT_MAX_CALLS = 1000  # for backends that cost money; see max_calls()
 calls_made = 0
 
 
 class JevBudgetExceeded(RuntimeError):
-    """Raised when a script asks for more decisions than ``$JEV_MAX_CALLS``."""
+    """Raised when a script asks for more decisions than ``$JEVLANG_MAX_CALLS``."""
 
 
 def max_calls(backend) -> int | None:
     """The per-process cap on decisions, or ``None`` for no cap.
 
-    ``$JEV_MAX_CALLS`` sets it (``0`` means unlimited).  Otherwise backends
+    ``$JEVLANG_MAX_CALLS`` sets it (``0`` means unlimited).  Otherwise backends
     that call a paid API (``billable = True``) default to
     ``DEFAULT_MAX_CALLS``, and the rest are unlimited.
     """
-    setting = os.environ.get("JEV_MAX_CALLS")
+    setting = os.environ.get("JEVLANG_MAX_CALLS")
     if setting is not None:
         return int(setting) or None
     return DEFAULT_MAX_CALLS if getattr(backend, "billable", False) else None
@@ -241,7 +241,7 @@ def decide(req: "Request") -> "Decision":
     if limit is not None and calls_made >= limit:
         raise JevBudgetExceeded(
             f"{req.filename}:{req.lineno}: this script has already asked Jev "
-            f"{calls_made} times (JEV_MAX_CALLS={limit}). Set JEV_MAX_CALLS "
+            f"{calls_made} times (JEVLANG_MAX_CALLS={limit}). Set JEVLANG_MAX_CALLS "
             f"higher, or 0 for no limit."
         )
     calls_made += 1
@@ -282,7 +282,7 @@ class Session:
         self.source_lines = source.splitlines()
         self.globals = module_globals
         self.counts: dict[int, int] = {}
-        self.trace = bool(os.environ.get("JEV_TRACE"))
+        self.trace = bool(os.environ.get("JEVLANG_TRACE"))
 
     def context(self, lineno: int) -> str:
         lo = max(1, lineno - self.CONTEXT_BEFORE)

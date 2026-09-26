@@ -1,4 +1,4 @@
-# coding: jev
+# coding: jevlang
 # The Wizard's Tower: a text adventure where Jev is the game master.
 #
 #   * The troll's riddle has no single answer: Jev judges whatever you say.
@@ -9,7 +9,7 @@
 #   * Hints and replies to silly actions are picked by Jev too.
 #
 # Python stores the world, prints text, and nothing else.  Needs a real key;
-# a playthrough is about 100-150 calls, so run it with JEV_MAX_CALLS=300.
+# a playthrough is about 100-150 calls.
 import jevlang.runtime as jev
 
 

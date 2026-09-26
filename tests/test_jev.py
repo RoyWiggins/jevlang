@@ -50,7 +50,7 @@ def run(tmp_path):
         runtime.set_backend(api.backend())
         jevlang.register()
         path = tmp_path / "mod.py"
-        path.write_text("# coding: jev\n" + textwrap.dedent(source))
+        path.write_text("# coding: jevlang\n" + textwrap.dedent(source))
         ns = {"__file__": str(path), "__name__": "mod"}
         try:
             exec(compile(path.read_bytes(), str(path), "exec"), ns)
@@ -142,7 +142,7 @@ def test_state_is_json_safe():
 
 def test_openrouter_is_used_without_a_typesafe_key(monkeypatch):
     monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
-    monkeypatch.delenv("JEV_MODEL", raising=False)
+    monkeypatch.delenv("JEVLANG_MODEL", raising=False)
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test")
     assert Jev.default_options() == {
         "api_key": "sk-or-test",
@@ -151,7 +151,7 @@ def test_openrouter_is_used_without_a_typesafe_key(monkeypatch):
     }
     monkeypatch.setenv("TYPESAFE_API_KEY", "ts-test")
     assert Jev.default_options() == {}  # the SDK's own defaults win
-    monkeypatch.setenv("JEV_MODEL", "jev-1.13")
+    monkeypatch.setenv("JEVLANG_MODEL", "jev-1.13")
     assert Jev.default_options() == {"model": "jev-1.13"}
 
 
