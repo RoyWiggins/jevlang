@@ -114,6 +114,12 @@ version says 0.82–0.88), and it ranked bell pepper above habanero. The
 named version sorted correctly; the one close call is habanero vs. sriracha
 (p=0.59 in one run, 0.34 in another).
 
+`examples/adventure.py` is a tiny text adventure where Jev decides
+everything: what you're trying to do, which way you mean, which object you
+mean, and whether a free-form action works. "rummage through the hay"
+finds the key hidden in the straw; "toss the bone to the doggo" calms the
+dog. A full playthrough is about 50 calls.
+
 With only an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
 which speaks the same typed API as TypeSafe's own endpoint. (OpenRouter's

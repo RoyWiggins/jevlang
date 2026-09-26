@@ -346,8 +346,17 @@ class Jev:
         from typesafe_sdk import Choice, Noul
 
         if req.kind == "match":
-            criteria = {f"case_{i}": f"case {pat}" for i, (pat, _) in enumerate(req.cases)}
-            criteria[Jev.NONE] = "None of the cases apply."
+            criteria = {}
+            for i, (pat, captures) in enumerate(req.cases):
+                if captures is not None and re.fullmatch(r"\s*[A-Za-z_]\w*\s*", pat):
+                    # `case _:` or a bare capture: Python's catch-all.  Jev
+                    # doesn't know that, and offering a separate "none"
+                    # option as well split the vote between the two.
+                    criteria[f"case_{i}"] = "Anything else: none of the other cases fit."
+                    break  # later cases are unreachable
+                criteria[f"case_{i}"] = f"case {pat}"
+            else:
+                criteria[Jev.NONE] = "None of the cases apply."
             return Choice(
                 instructions=(
                     "A `match` statement compares `match_subject` against these "

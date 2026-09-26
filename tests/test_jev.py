@@ -153,3 +153,12 @@ def test_openrouter_is_used_without_a_typesafe_key(monkeypatch):
     assert Jev.default_options() == {}  # the SDK's own defaults win
     monkeypatch.setenv("JEV_MODEL", "jev-1.13")
     assert Jev.default_options() == {"model": "jev-1.13"}
+
+
+def test_catch_all_case_replaces_none_option():
+    req = runtime.Request(kind="match", text="cmd", is_python=True, variables={}, code="",
+                          filename="t", lineno=1, subject="dance",
+                          cases=[("going somewhere", None), ("_", []), ("unreachable", None)])
+    criteria = Jev.question(req).criteria
+    assert criteria == {"case_0": "case going somewhere",
+                        "case_1": "Anything else: none of the other cases fit."}
