@@ -26,6 +26,7 @@ __all__ = [
     "NOVALUE",
     "get_backend",
     "set_backend",
+    "JevBudgetExceeded",
 ]
 
 
@@ -187,6 +188,45 @@ def set_backend(backend) -> None:
 
 
 # --------------------------------------------------------------------------
+# Call budget
+
+DEFAULT_MAX_CALLS = 100  # for backends that cost money; see max_calls()
+calls_made = 0
+
+
+class JevBudgetExceeded(RuntimeError):
+    """Raised when a script asks for more decisions than ``$JEV_MAX_CALLS``."""
+
+
+def max_calls(backend) -> int | None:
+    """The per-process cap on decisions, or ``None`` for no cap.
+
+    ``$JEV_MAX_CALLS`` sets it (``0`` means unlimited).  Otherwise backends
+    that call a paid API (``billable = True``) default to
+    ``DEFAULT_MAX_CALLS``, and the rest are unlimited.
+    """
+    setting = os.environ.get("JEV_MAX_CALLS")
+    if setting is not None:
+        return int(setting) or None
+    return DEFAULT_MAX_CALLS if getattr(backend, "billable", False) else None
+
+
+def decide(req: "Request") -> "Decision":
+    """Ask the active backend, counting the call against the budget."""
+    global calls_made
+    backend = get_backend()
+    limit = max_calls(backend)
+    if limit is not None and calls_made >= limit:
+        raise JevBudgetExceeded(
+            f"{req.filename}:{req.lineno}: this script has already asked Jev "
+            f"{calls_made} times (JEV_MAX_CALLS={limit}). Set JEV_MAX_CALLS "
+            f"higher, or 0 for no limit."
+        )
+    calls_made += 1
+    return backend.decide(req)
+
+
+# --------------------------------------------------------------------------
 
 
 def session(module_globals: dict) -> "Session":
@@ -261,7 +301,7 @@ class Session:
             named = [f"{k}={_short_repr(v, 40)}" for k, v in req.variables.items() if k in words]
             where = f" [{', '.join(named)}]" if named else ""
             print(
-                f"[jev] {os.path.basename(self.filename)}:{req.lineno} "
+                f"[jev #{calls_made}] {os.path.basename(self.filename)}:{req.lineno} "
                 f"{req.kind} {req.text!r}{where} -> {decision.value!r} "
                 f"@ {decision.confidence:.2f}{reason}",
                 file=sys.stderr,
@@ -269,7 +309,7 @@ class Session:
 
     def cond(self, kind: str, text: str, lineno: int, local_vars: dict) -> bool:
         req = self._request(kind, text, lineno, local_vars)
-        decision = get_backend().decide(req)
+        decision = decide(req)
         self._log(req, decision)
         return bool(decision.value)
 
@@ -284,7 +324,7 @@ class Session:
         """Pick a case.  Returns ``(index, bindings)``; the transformed
         ``case (N, {...}):`` patterns destructure it."""
         req = self._request("match", text, lineno, local_vars, subject=subject, cases=cases)
-        decision = get_backend().decide(req)
+        decision = decide(req)
         self._log(req, decision)
         index = int(decision.value)
         if not 0 <= index < len(cases):

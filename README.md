@@ -91,11 +91,11 @@ JEV_TRACE=1 python examples/reviews.py
 ```
 
 ```
-[jev] reviews.py:9 match 'review' -> 0 @ 0.94 (p=0.95)
+[jev #1] reviews.py:9 match 'review' -> 0 @ 0.94 (p=0.95)
 😀 Absolutely loved it, we're coming back next week!
-[jev] reviews.py:9 match 'review' -> 1 @ 0.98 (p=0.99)
+[jev #2] reviews.py:9 match 'review' -> 1 @ 0.98 (p=0.99)
 😠 Cold food, and the waiter rolled his eyes at us.
-[jev] reviews.py:9 match 'review' -> 2 @ 0.98 (p=0.98)
+[jev #3] reviews.py:9 match 'review' -> 2 @ 0.98 (p=0.98)
 😐 It was fine, I guess.
 ```
 
@@ -136,6 +136,13 @@ and the question is a Noul whose instructions name the `condition`
 `match_subject` (its text and, when it's Python, its value), and the Choice's
 options are `case_0`, `case_1`, ... described by the case source.
 
+**Call budget.** A script stops with `JevBudgetExceeded` once it has asked
+Jev `JEV_MAX_CALLS` times: 100 by default with the real backend, so a
+runaway `while` can't drain your credits. Set it higher for big programs
+(the 99-bottle example needs 100), or `0` for no limit. The fake backend is
+free, so it's unlimited unless you set the variable. Trace lines are numbered
+(`[jev #12]`) so you can watch the count.
+
 Other knobs: `JEV_MODEL` (or the SDK's own `TYPESAFE_BASE_URL` and
 `TYPESAFE_DEFAULT_MODEL`, default `jev-latest`); `JEV_THRESHOLD`; and `JEV_LOCAL_PYTHON=1`, which evaluates
 conditions that are already valid Python locally instead of asking. Jev's
@@ -145,7 +152,7 @@ so `if n % 15 == 0:` is a better job for Python.
 Set `JEV_TRACE=1` to log every decision to stderr:
 
 ```
-[jev] bottles.py:3 while 'there are bottles left' [bottles=98] -> True @ 0.90 (bool(bottles))
+[jev #2] bottles.py:3 while 'there are bottles left' [bottles=98] -> True @ 0.90 (bool(bottles))
 ```
 
 Variables named in the condition are shown in brackets, so each line of a

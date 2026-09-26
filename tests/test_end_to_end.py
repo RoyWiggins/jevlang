@@ -126,4 +126,24 @@ def test_trace_shows_named_variables(tmp_path, capsys, monkeypatch):
     run("# coding: jev\nleft, right, other = 'a', 'b', 'c'\nif left is not right:\n    pass\n", tmp_path)
     err = capsys.readouterr().err
     assert "[left='a', right='b'] -> True" in err
+    assert "[jev #" in err
     assert "other" not in err
+
+
+def test_call_budget(tmp_path, monkeypatch):
+    monkeypatch.setattr(runtime, "calls_made", 0)
+    monkeypatch.setenv("JEV_MAX_CALLS", "5")
+    with pytest.raises(runtime.JevBudgetExceeded, match="asked Jev 5 times"):
+        run("# coding: jev\nwhile True:\n    pass\n", tmp_path)
+    assert runtime.calls_made == 5
+
+
+def test_call_budget_defaults(monkeypatch):
+    class Billable:
+        billable = True
+
+    monkeypatch.delenv("JEV_MAX_CALLS", raising=False)
+    assert runtime.max_calls(FakeJev()) is None
+    assert runtime.max_calls(Billable()) == runtime.DEFAULT_MAX_CALLS
+    monkeypatch.setenv("JEV_MAX_CALLS", "0")
+    assert runtime.max_calls(Billable()) is None

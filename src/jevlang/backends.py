@@ -289,12 +289,15 @@ class Jev:
     * ``$JEV_MODEL`` -- model id (default ``jev-latest``, or
       ``~typesafe/jev-latest`` on OpenRouter)
 
+    * ``$JEV_MAX_CALLS`` -- stop after this many decisions (default 100
+      for this backend; 0 for no limit)
     * ``$JEV_THRESHOLD`` -- probability at which a condition is true (0.5)
     * ``$JEV_LOCAL_PYTHON=1`` -- evaluate conditions that are valid Python
       locally instead of asking (Jev is not a calculator)
     """
 
     NONE = "none"
+    billable = True  # capped at runtime.DEFAULT_MAX_CALLS unless $JEV_MAX_CALLS
 
     def __init__(self, client=None, threshold: float | None = None,
                  local_python: bool | None = None, **client_options):
