@@ -112,6 +112,40 @@ JEVLANG_TRACE=1 uv run python examples/reviews.py
 
 `examples/vibe_sort.py` bubble-sorts foods by spiciness
 
+`examples/tictactoe.py` is tic-tac-toe with Jev in charge of everything:
+which square you meant, whether it's taken, whether a line is complete, and
+where O plays. Jev can't spot three in a row on a whole board, so it checks
+one line at a time, which comes to about 230 calls a game. It sort of works:
+
+```
+Your move (X), e.g. 'top left' or 'middle': middle
+Jev plays the top left square.
+ O |   |
+   | X |
+   |   |
+Your move (X), e.g. 'top left' or 'middle': upper left
+The top left square is taken.
+Your move (X), e.g. 'top left' or 'middle': bottom right corner
+Jev plays the top middle square.
+ O | O |
+   | X |
+   |   | X
+Your move (X), e.g. 'top left' or 'middle': top right
+Jev plays the middle left square.
+ O | O | X
+ O | X |
+   |   | X
+Your move (X), e.g. 'top left' or 'middle': bottom left
+ O | O | X
+ O | X |
+ X |   | X
+You win!
+```
+
+On its last move Jev did find the block at middle right (p=0.96). Then it
+judged `if move is nothing:` with `move='middle right'` at p=0.50, decided it
+had no move after all, and took the first free square instead.
+
 `examples/adventure.py` is a tiny text adventure where Jev decides
 everything: what you're trying to do, which way you mean, which object you
 mean, and whether a free-form action works.
