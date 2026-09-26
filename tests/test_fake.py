@@ -27,6 +27,11 @@ def ask(text, **variables):
         ("the user name is set", {"user_name": ""}, False),
         ("the list has more than 2 items", {"list": [1, 2, 3]}, True),
         ("unicorns exist", {}, False),
+        ("n is divisible by 3", {"n": 9}, True),
+        ("n is a multiple of five", {"n": 9}, False),
+        ("n is divisible by both three and five", {"n": 30}, True),
+        ("n is divisible by both three and five", {"n": 9}, False),
+        ("n is not a multiple of 4", {"n": 6}, True),
     ],
 )
 def test_judge(text, variables, expected):

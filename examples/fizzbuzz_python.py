@@ -1,10 +1,10 @@
 # coding: jev
 for n in range(1, 16):
-    if n is divisible by both three and five:
+    if n % 15 == 0:
         print("FizzBuzz")
-    elif n is a multiple of three:
+    elif n % 3 == 0:
         print("Fizz")
-    elif n is a multiple of five:
+    elif n % 5 == 0:
         print("Buzz")
     else:
         print(n)

@@ -99,6 +99,12 @@ JEV_TRACE=1 python examples/reviews.py
 😐 It was fine, I guess.
 ```
 
+`examples/fizzbuzz.py` is FizzBuzz with English conditions
+(`if n is divisible by both three and five:`). Jev gets all 15 right, though
+it's least sure at 10 (p=0.23 for "divisible by both", still a clear no).
+`examples/fizzbuzz_python.py` is the same program with Python conditions,
+which Jev is also asked about unless `JEV_LOCAL_PYTHON=1`.
+
 With only an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
 which speaks the same typed API as TypeSafe's own endpoint. (OpenRouter's

@@ -112,9 +112,10 @@ def test_weather_example_via_runpy():
     ]
 
 
-def test_cli_runner():
+@pytest.mark.parametrize("example", ["fizzbuzz.py", "fizzbuzz_python.py"])
+def test_cli_runner(example):
     env = {**os.environ, "PYTHONPATH": str(ROOT / "src"), "JEV_BACKEND": "fake"}
-    r = subprocess.run([sys.executable, "-m", "jevlang", str(EXAMPLES / "fizzbuzz.py")],
+    r = subprocess.run([sys.executable, "-m", "jevlang", str(EXAMPLES / example)],
                        env=env, capture_output=True, text=True, timeout=30)
     assert r.returncode == 0, r.stderr
     assert r.stdout.split() == "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz".split()

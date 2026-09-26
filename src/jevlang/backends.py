@@ -63,6 +63,12 @@ COMPARATORS = [
     (r"\bexactly\b|\bequals?(?: to)?\b|\bis\b(?= +" + _NUM + r")", "=="),
 ]
 
+# "divisible by 3", "a multiple of three", "divisible by both three and five"
+DIVISIBLE = re.compile(
+    r"\b(?:evenly )?(?:divisible by|(?:an? )?multiple of)"
+    r"((?:\s+(?:both|and|or)?\s*,?\s*" + _NUM + r")+)"
+)
+
 OPS = {
     ">": lambda a, b: a > b,
     "<": lambda a, b: a < b,
@@ -140,7 +146,16 @@ class FakeJev:
             scrubbed = scrubbed[:start] + " " * (end - start) + scrubbed[end:]
 
         result, reason = None, None
-        for pattern, op in COMPARATORS:
+        m = DIVISIBLE.search(scrubbed)
+        if m:
+            divisors = [_parse_number(d) for d in re.findall(_NUM, m.group(1))]
+            try:
+                result = all(value % d == 0 for d in divisors)
+                reason = f"{why} divisible by {' and '.join(map(str, divisors))}"
+            except (TypeError, ZeroDivisionError):
+                return Decision(False, 0.5, f"can't divide {why}")
+            scrubbed = scrubbed[: m.start()] + " " * (m.end() - m.start()) + scrubbed[m.end():]
+        for pattern, op in COMPARATORS if result is None else []:
             m = re.search(pattern, scrubbed)
             if not m:
                 continue
