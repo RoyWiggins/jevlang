@@ -1,7 +1,7 @@
 """The ``jev`` source codec.
 
 Python decodes a source file with the codec named in its PEP 263 cookie, so
-a file starting with ``# coding: jev`` is handed to us as bytes before the
+a file starting with ``# coding: jevlang`` is handed to us as bytes before the
 tokenizer ever sees it.  We decode it as UTF-8, run :func:`transform`, and
 give Python back plain Python.  (Same trick as magic_codec.)
 
@@ -14,7 +14,7 @@ from __future__ import annotations
 import codecs
 import encodings
 
-NAME = "jev"
+NAME = "jevlang"
 
 
 def decode(data, errors: str = "strict") -> tuple[str, int]:

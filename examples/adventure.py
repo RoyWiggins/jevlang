@@ -1,4 +1,4 @@
-# coding: jev
+# coding: jevlang
 # A tiny text adventure where Jev makes every decision: what you're trying
 # to do, which way you mean, which thing you mean, and whether whatever you
 # try actually works.  Python only stores the world and prints text.

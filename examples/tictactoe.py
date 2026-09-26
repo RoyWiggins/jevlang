@@ -1,11 +1,11 @@
-# coding: jev
+# coding: jevlang
 # Tic-tac-toe where Jev makes every decision: which square you meant, whether
 # it's free, whether a line is complete, where O plays, and who won.  Python
 # only stores the board, prints it, and lists which squares form lines.
 #
 # Jev can't reliably spot three in a row on a whole board, so it is asked
 # about one line at a time instead.  It sort of works: a five-move game took
-# about 230 calls, so run it with JEV_MAX_CALLS=300.
+# about 230 calls.
 #
 # Most conditions name the variable they're about (`would_win is true`), and
 # "no square" is the word "nothing" rather than None: Jev was unsure about

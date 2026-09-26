@@ -10,7 +10,7 @@ def test_english_while_is_rewritten():
 
 def test_output_is_valid_python_with_same_line_count():
     src = (
-        "# coding: jev\n"
+        "# coding: jevlang\n"
         "if it's raining:  # a comment\n"
         "    x = 1\n"
         "elif the sky is falling:\n"

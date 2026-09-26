@@ -32,7 +32,7 @@ def by_name(name: str):
     try:
         return {"fake": FakeJev, "ask": AskJev, "jev": Jev}[name.lower()]()
     except KeyError:
-        raise ValueError(f"unknown JEV_BACKEND {name!r} (try fake, ask or jev)") from None
+        raise ValueError(f"unknown JEVLANG_BACKEND {name!r} (try fake, ask or jev)") from None
 
 
 # --------------------------------------------------------------------------
@@ -286,28 +286,28 @@ class Jev:
     ``$TYPESAFE_DEFAULT_MODEL``.  Without a TypeSafe key,
     ``$OPENROUTER_API_KEY`` routes through OpenRouter instead.  Ours:
 
-    * ``$JEV_MODEL`` -- model id (default ``jev-latest``, or
+    * ``$JEVLANG_MODEL`` -- model id (default ``jev-latest``, or
       ``~typesafe/jev-latest`` on OpenRouter)
 
-    * ``$JEV_MAX_CALLS`` -- stop after this many decisions (default 100
+    * ``$JEVLANG_MAX_CALLS`` -- stop after this many decisions (default 1000
       for this backend; 0 for no limit)
-    * ``$JEV_THRESHOLD`` -- probability at which a condition is true (0.5)
-    * ``$JEV_LOCAL_PYTHON=1`` -- evaluate conditions that are valid Python
+    * ``$JEVLANG_THRESHOLD`` -- probability at which a condition is true (0.5)
+    * ``$JEVLANG_LOCAL_PYTHON=1`` -- evaluate conditions that are valid Python
       locally instead of asking (Jev is not a calculator)
     """
 
     NONE = "none"
-    billable = True  # capped at runtime.DEFAULT_MAX_CALLS unless $JEV_MAX_CALLS
+    billable = True  # capped at runtime.DEFAULT_MAX_CALLS unless $JEVLANG_MAX_CALLS
 
     def __init__(self, client=None, threshold: float | None = None,
                  local_python: bool | None = None, **client_options):
         self._client = client
         self._client_options = client_options
         if threshold is None:
-            threshold = float(os.environ.get("JEV_THRESHOLD", 0.5))
+            threshold = float(os.environ.get("JEVLANG_THRESHOLD", 0.5))
         self.threshold = threshold
         if local_python is None:
-            local_python = bool(os.environ.get("JEV_LOCAL_PYTHON"))
+            local_python = bool(os.environ.get("JEVLANG_LOCAL_PYTHON"))
         self.local_python = local_python
 
     @property
@@ -330,15 +330,15 @@ class Jev:
         """Client options from the environment.
 
         With only ``$OPENROUTER_API_KEY`` set, go through OpenRouter's
-        pass-through to Jev (same /v1/systemone API).  ``$JEV_MODEL``
+        pass-through to Jev (same /v1/systemone API).  ``$JEVLANG_MODEL``
         overrides the model either way.
         """
         options = {}
         key = os.environ.get("OPENROUTER_API_KEY")
         if key and not os.environ.get("TYPESAFE_API_KEY"):
             options.update(api_key=key, base_url=cls.OPENROUTER_URL, model=cls.OPENROUTER_MODEL)
-        if os.environ.get("JEV_MODEL"):
-            options["model"] = os.environ["JEV_MODEL"]
+        if os.environ.get("JEVLANG_MODEL"):
+            options["model"] = os.environ["JEVLANG_MODEL"]
         return options
 
     @staticmethod

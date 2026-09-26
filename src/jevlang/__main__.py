@@ -44,7 +44,7 @@ def main(args: list[str] | None = None) -> None:
     p.add_argument("args", nargs=argparse.REMAINDER, help="arguments for the script")
     p.add_argument("--show", action="store_true", help="print the transformed source instead of running it")
     p.add_argument("--install-pth", action="store_true",
-                   help=f"install {PTH_NAME} so '# coding: jev' works with plain `python`")
+                   help=f"install {PTH_NAME} so '# coding: jevlang' works with plain `python`")
     p.add_argument("--user", action="store_true", help="with --install-pth: use the user site-packages")
     ns = p.parse_args(args)
 
