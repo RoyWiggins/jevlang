@@ -310,10 +310,11 @@ Other knobs: `JEVLANG_MODEL` (or the SDK's own `TYPESAFE_BASE_URL` and
 conditions that are already valid Python locally instead of asking. This is known as "Luddite mode". 
 
 
-### Probabilistic branches
+### Directives
 
-Add `# jev: roll` to a header and the branch is taken *with* Jev's
-probability instead of whenever p ≥ 0.5:
+`# jev:` comments change how a condition is asked. With `# jev: roll` on a
+header, the branch is taken *with* Jev's probability instead of whenever
+p ≥ 0.5:
 
 ```python
 if what_you_said would make a gloomy ghost laugh:  # jev: roll
