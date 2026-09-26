@@ -79,16 +79,31 @@ Pick one with `$JEV_BACKEND`:
 |--------|--------------|
 | `fake` | Default while there's no API key. Offline and deterministic. Evaluates conditions that are valid Python as Python, and has keyword heuristics for English: it finds the variable you mention (`bottles`, allowing plurals and `snake_case` → words), then handles comparisons (`more than 10`, `at least three`, `fewer than limit`), `even`/`odd`/`positive`/`negative`, and negation (`no`, `not`, `n't`, `empty`, `out of`, ...), or falls back to the variable's truthiness. If it can't tell what you mean, the answer is `False`. |
 | `ask`  | You are Jev: shows the full request on stderr and reads `y`/`n` (or a case number) from the terminal. |
-| `jev`  | The real Jev, via the [TypeSafe SDK](https://docs.typesafe.ai/sdk/python) (`pip install '.[jev]'`). Used by default when `TYPESAFE_API_KEY` is set. Conditions are asked as a Noul (probability of yes; true at ≥ `JEV_THRESHOLD`, default 0.5), `match` as a Choice between the cases plus `none`. |
+| `jev`  | The real Jev, via the [TypeSafe SDK](https://docs.typesafe.ai/sdk/python) (`pip install '.[jev]'`). Used by default when `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` is set. Conditions are asked as a Noul (probability of yes; true at ≥ `JEV_THRESHOLD`, default 0.5), `match` as a Choice between the cases plus `none`. |
 | `pkg.mod:factory` | Any object with a `decide(request) -> Decision` method. |
 
 ### Using the real Jev
 
 ```
 pip install '.[jev]'
-export TYPESAFE_API_KEY=...      # from https://console.typesafe.ai/
-JEV_TRACE=1 python examples/bottles.py
+export OPENROUTER_API_KEY=sk-or-...   # or TYPESAFE_API_KEY from https://console.typesafe.ai/
+JEV_TRACE=1 python examples/reviews.py
 ```
+
+```
+[jev] reviews.py:9 match 'review' -> 0 @ 0.94 (p=0.95)
+😀 Absolutely loved it, we're coming back next week!
+[jev] reviews.py:9 match 'review' -> 1 @ 0.98 (p=0.99)
+😠 Cold food, and the waiter rolled his eyes at us.
+[jev] reviews.py:9 match 'review' -> 2 @ 0.98 (p=0.98)
+😐 It was fine, I guess.
+```
+
+With only an OpenRouter key, requests go to OpenRouter's pass-through to Jev
+(`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
+which speaks the same typed API as TypeSafe's own endpoint. (OpenRouter's
+`typesafe/jev-router` is something else: a chat-completions router that
+forwards prompts to other LLMs and answers in prose, so it isn't used here.)
 
 Each decision is one `system_one` call. The `state` is JSON:
 
@@ -106,8 +121,8 @@ and the question is a Noul whose instructions name the `condition`
 `match_subject` (its text and, when it's Python, its value), and the Choice's
 options are `case_0`, `case_1`, ... described by the case source.
 
-Other knobs: the SDK's own `TYPESAFE_BASE_URL` and `TYPESAFE_DEFAULT_MODEL`
-(default `jev-latest`); `JEV_THRESHOLD`; and `JEV_LOCAL_PYTHON=1`, which evaluates
+Other knobs: `JEV_MODEL` (or the SDK's own `TYPESAFE_BASE_URL` and
+`TYPESAFE_DEFAULT_MODEL`, default `jev-latest`); `JEV_THRESHOLD`; and `JEV_LOCAL_PYTHON=1`, which evaluates
 conditions that are already valid Python locally instead of asking. Jev's
 docs say it is [not a calculator](https://docs.typesafe.ai/model-jaggedness/jev-1.13.md),
 so `if n % 15 == 0:` is a better job for Python.

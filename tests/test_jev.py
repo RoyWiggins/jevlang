@@ -138,3 +138,18 @@ def test_state_is_json_safe():
     assert state["variables"]["d"] == {"1": [2, 3]}
     assert state["variables"]["f"] == "nan"
     assert state["variables"]["t"].startswith("<")
+
+
+def test_openrouter_is_used_without_a_typesafe_key(monkeypatch):
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.delenv("JEV_MODEL", raising=False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test")
+    assert Jev.default_options() == {
+        "api_key": "sk-or-test",
+        "base_url": "https://openrouter.ai/api",
+        "model": "~typesafe/jev-latest",
+    }
+    monkeypatch.setenv("TYPESAFE_API_KEY", "ts-test")
+    assert Jev.default_options() == {}  # the SDK's own defaults win
+    monkeypatch.setenv("JEV_MODEL", "jev-1.13")
+    assert Jev.default_options() == {"model": "jev-1.13"}

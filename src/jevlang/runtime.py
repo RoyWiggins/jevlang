@@ -162,14 +162,17 @@ def get_backend():
     """The active backend, chosen from ``$JEV_BACKEND`` on first use.
 
     ``fake`` (default without an API key), ``ask`` (you are Jev), or
-    ``jev`` (the real Jev API; default when ``$TYPESAFE_API_KEY`` is set).
+    ``jev`` (the real Jev API; default when ``$TYPESAFE_API_KEY`` or
+    ``$OPENROUTER_API_KEY`` is set).
     """
     global _backend
     if _backend is None:
         from . import backends
 
         name = os.environ.get("JEV_BACKEND") or (
-            "jev" if os.environ.get("TYPESAFE_API_KEY") else "fake"
+            "jev"
+            if os.environ.get("TYPESAFE_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
+            else "fake"
         )
         _backend = backends.by_name(name)
     return _backend

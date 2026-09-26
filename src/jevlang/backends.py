@@ -268,7 +268,11 @@ class Jev:
     and surrounding source go in ``state`` (see :meth:`Request.state`).
 
     The SDK reads ``$TYPESAFE_API_KEY``, ``$TYPESAFE_BASE_URL`` and
-    ``$TYPESAFE_DEFAULT_MODEL``.  Ours:
+    ``$TYPESAFE_DEFAULT_MODEL``.  Without a TypeSafe key,
+    ``$OPENROUTER_API_KEY`` routes through OpenRouter instead.  Ours:
+
+    * ``$JEV_MODEL`` -- model id (default ``jev-latest``, or
+      ``~typesafe/jev-latest`` on OpenRouter)
 
     * ``$JEV_THRESHOLD`` -- probability at which a condition is true (0.5)
     * ``$JEV_LOCAL_PYTHON=1`` -- evaluate conditions that are valid Python
@@ -297,8 +301,27 @@ class Jev:
                 raise RuntimeError(
                     "the jev backend needs the TypeSafe SDK: pip install 'jevlang[jev]'"
                 ) from None
-            self._client = TypeSafeClient(**self._client_options)
+            self._client = TypeSafeClient(**{**self.default_options(), **self._client_options})
         return self._client
+
+    OPENROUTER_URL = "https://openrouter.ai/api"
+    OPENROUTER_MODEL = "~typesafe/jev-latest"
+
+    @classmethod
+    def default_options(cls) -> dict:
+        """Client options from the environment.
+
+        With only ``$OPENROUTER_API_KEY`` set, go through OpenRouter's
+        pass-through to Jev (same /v1/systemone API).  ``$JEV_MODEL``
+        overrides the model either way.
+        """
+        options = {}
+        key = os.environ.get("OPENROUTER_API_KEY")
+        if key and not os.environ.get("TYPESAFE_API_KEY"):
+            options.update(api_key=key, base_url=cls.OPENROUTER_URL, model=cls.OPENROUTER_MODEL)
+        if os.environ.get("JEV_MODEL"):
+            options["model"] = os.environ["JEV_MODEL"]
+        return options
 
     @staticmethod
     def question(req: Request):

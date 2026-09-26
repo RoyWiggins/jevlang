@@ -94,7 +94,8 @@ def _python_with_codec(*args, **kw):
     """Run a fresh interpreter where the codec is registered at startup,
     like the installed .pth does."""
     env = {**os.environ, "PYTHONPATH": str(ROOT / "src"), "JEV_BACKEND": "fake"}
-    env.pop("JEV_API_KEY", None)
+    for key in ("TYPESAFE_API_KEY", "OPENROUTER_API_KEY"):
+        env.pop(key, None)
     code = "import jevlang, runpy, sys; jevlang.register(); sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')"
     return subprocess.run([sys.executable, "-c", code, *args], env=env,
                           capture_output=True, text=True, timeout=30, **kw)
