@@ -14,6 +14,7 @@ import random
 import re
 import sys
 import types
+import warnings
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -160,10 +161,14 @@ def _interesting(name: str, value: Any) -> bool:
 
 
 def _is_python_expr(text: str) -> bool:
-    try:
-        compile(text, "<jev>", "eval")
-    except SyntaxError:
-        return False
+    # "phase is not \"halt\"" parses as Python, and Python would warn about
+    # `is` with a literal; in jevlang that "is" is English, so keep quiet.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        try:
+            compile(text, "<jev>", "eval")
+        except SyntaxError:
+            return False
     return True
 
 

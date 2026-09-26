@@ -105,6 +105,18 @@ def rule_index(state, symbol):
     return -1
 
 
+class WrongChoice(Exception):
+    pass
+
+
+def check_choice(state, symbol, choice, step):
+    """Raise WrongChoice unless `choice` is the rule the table would pick."""
+    expected = rule_index(state, symbol)
+    if choice != expected:
+        raise WrongChoice(f"at UTM step {step}, in {state!r} reading {symbol!r}, "
+                          f"it chose rule {choice} but the table says rule {expected}")
+
+
 def rule_for(state, symbol):
     for symbols, write, move, nxt in RULES[state]:
         if symbols == ANY or symbol in symbols:
