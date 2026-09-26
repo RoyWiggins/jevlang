@@ -170,3 +170,17 @@ def test_roll_uses_probability(tmp_path, monkeypatch):
 def test_decision_probability():
     assert runtime.Decision(True, 0.4).probability == pytest.approx(0.7)
     assert runtime.Decision(False, 0.4).probability == pytest.approx(0.3)
+
+
+def test_no_source_directive(tmp_path):
+    seen = []
+
+    class Spy(FakeJev):
+        def decide(self, req):
+            seen.append((req.lineno, "source" in req.state()))
+            return super().decide(req)
+
+    runtime.set_backend(Spy())
+    run("# coding: jevlang\nx = 1\nif x:\n    pass\nif x:  # jev: no-source\n    pass\n", tmp_path)
+    run("# coding: jevlang\n# jev: no-source\nx = 1\nif x:\n    pass\n", tmp_path)
+    assert seen == [(3, True), (5, False), (4, False)]

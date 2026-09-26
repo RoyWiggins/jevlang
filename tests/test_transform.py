@@ -93,3 +93,12 @@ def test_roll_comment():
     lines = out.splitlines()
     assert lines[0].endswith("locals(), 'roll'):")
     assert lines[2].endswith("locals()):")
+
+
+def test_directives():
+    src = "# jev: no-source\nif a:  # jev: roll\n    pass\nwhile b:\n    pass\n"
+    lines = transform(src).splitlines()
+    assert lines[1].endswith("locals(), 'no-source,roll'):")
+    assert lines[3].endswith("locals(), 'no-source'):")
+    assert transform("if a:  # jev: roll, no-source\n    pass\n").splitlines()[0].endswith(
+        "locals(), 'no-source,roll'):")

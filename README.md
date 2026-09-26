@@ -152,6 +152,168 @@ mean, and whether a free-form action works.
 game master. A playthrough is
 about 130 calls.
 
+`examples/turing.py` is a Turing machine programmed in English. Each rule
+says when it applies and what it does:
+
+```python
+("carrying and you see a 1", "write a 0 and move left, still carrying"),
+("carrying and you see a 0 or a blank", "write a 1 and halt"),
+```
+
+Jev compiles the what-it-does half once (what to write, which way to move,
+which state comes next), then picks the matching rule at every step:
+
+```
+$ python examples/turing.py increment 1011
+  1 0 1 1 _    [carrying]
+        ^
+  1 0 1 0 _    [carrying]
+      ^
+  1 0 0 0 _    [carrying]
+    ^
+  1 1 0 0 _    [halted]
+    ^
+
+Halted after 8 steps. Tape: 1100
+```
+
+`python examples/turing.py beaver` runs the 2-state busy beaver (6 steps,
+four 1s), and `beaver3` the 3-state one (14 steps, six 1s). Each run is
+about 50 calls, or about 120 for `beaver3`.
+
+`python examples/turing.py wolfram` runs Wolfram's 2-state, 3-symbol machine,
+the smallest known universal Turing machine. Six English rules:
+
+```python
+("in state A on a 0", "write a 1, move right and switch to state B"),
+("in state A on a 1", "write a 2, move left and stay in state A"),
+("in state A on a 2", "write a 1, move left and stay in state A"),
+("in state B on a 0", "write a 2, move left and switch to state A"),
+("in state B on a 1", "write a 2, move right and stay in state B"),
+("in state B on a 2", "write a 0, move right and switch to state A"),
+```
+
+It never halts, so it runs 20 steps by default (`wolfram "" 40` for 40).
+Its universality goes through elaborate encodings of other systems, so
+don't expect it to compute anything you'd recognise, but the tape it
+leaves after 20 steps (`1 1 2 2 0 1 0`, head on the last square, state B)
+matches a plain-Python run of the same table.
+
+`examples/utm.py` is a "universal" Turing machine, the cheap way. Its tape
+holds the busy beaver's program as English entries, and its own rules are
+five English instructions that Jev carries out:
+
+```python
+match utm_state:
+    case reading: note the simulated state and the symbol under the simulated head:
+        ...
+    case looking up: find the program entry that matches the state and symbol:
+        ...
+```
+
+A real UTM matches and copies symbols one square at a time; this one hands
+the hard part to Jev, so it's a joke. It does get the right answer:
+
+```
+step 5   [_]  1   1   1    state A
+  found:  in state A on a blank: write a 1, move right, become B
+step 6    1  [1]  1   1    state B
+  found:  in state B on a 1: keep the 1, move right, become halt
+
+The universal machine ran 6 simulated steps. The tape has 4 ones.
+```
+
+A full run is about 115 calls; `python examples/utm.py 2` stops after two
+simulated steps (about 40).
+
+`examples/utm_table.py` is the honest version, in plain Python with no Jev
+yet: a direct-simulation universal machine with 25 states, 18 symbols and
+55 rules. The simulated machine's rules sit on its tape, and it runs them
+one square at a time:
+
+```
+$ python examples/utm_table.py
+UTM: 25 states, 18 symbols, 55 rules
+Simulating 'beaver'. Starting tape:
+  >CE1RuuE1LuuBE1LuE1R$0000x0000
+
+  after     0 UTM steps (+   0): state A   >CE1RuuE1LuuBE1LuE1R$0000x0000
+  after   175 UTM steps (+ 175): state B   >BE1RuuE1LuuCE1LuE1R$00001x000
+  ...
+  after   909 UTM steps (+ 102): halted          >BE1RuuE1LuuBE1LuE1R$0011y1000
+
+6 simulated steps in 909 UTM steps (about 152 per simulated step); 4 ones on the tape.
+```
+
+Each block (`C` marks the current state) holds two entries, for reading 0
+and reading 1: the symbol to write, the direction, and the next state in
+unary (`uu` = state 2, nothing = halt). `x`/`y` mark the simulated head on
+a 0/1. It is checked against a direct simulation after every step, for both
+busy beavers and for random 1-3 state machines (`uv run pytest`). The
+3-state busy beaver takes 4,219 UTM steps.
+
+`examples/utm_jev.py` runs that UTM with Jev choosing every rule. The rule
+table becomes a jevlang program with one `match` per UTM state, and each
+tape symbol is shown to Jev as a word:
+
+```python
+def rule_16(symbol):
+    # UTM state: count
+    match symbol:
+        case the symbol is "unit":
+            return 0
+        case the symbol is "zero", "one", "west", "east" or "tally":
+            return 1
+        case _:
+            return 2
+```
+
+At each UTM step Python calls the current state's function and applies the
+rule Jev picks, and every pick is checked against the table:
+
+```
+$ python examples/utm_jev.py 6
+  simulated step 0: UTM step    0   state A   >CE1RuuE1LuuBE1LuE1R$0000x0000
+  simulated step 1: UTM step  175   state B   >BE1RuuE1LuuCE1LuE1R$00001x000
+  simulated step 2: UTM step  312   state A   >CE1RuuE1LuuBE1LuE1R$0000y1000
+  simulated step 3: UTM step  513   state B   >BE1RuuE1LuuCE1LuE1R$000x11000
+  simulated step 4: UTM step  642   state A   >CE1RuuE1LuuBE1LuE1R$00x111000
+  simulated step 5: UTM step  807   state B   >BE1RuuE1LuuCE1LuE1R$001y11000
+  simulated step 6: UTM step  909   halted    >BE1RuuE1LuuBE1LuE1R$0011y1000
+
+909 UTM steps, every rule chosen by Jev (909 calls).
+After 6 simulated step(s): state H, matching a direct simulation.
+```
+
+That's a whole busy beaver run, interpreted by a universal machine, with
+every one of its 909 rules chosen by Jev, in about four minutes. The lowest
+confidence of any choice was p=0.90. The words mattered:
+
+- Shown the raw symbol `1`, Jev was close to a coin flip on whether it was
+  an `x`, and got one wrong 18 steps in.
+- Spelled "one", it got through two simulated steps, but 41 of 312 choices
+  were below p=0.8.
+- Words that are also adjectives backfired: "the symbol is current" read
+  as always true. Quoted nouns ("crown", "flag", "west", "east") fixed it.
+
+`utm_jev.py` is itself a jevlang file, so Jev also runs the loop that drives
+the UTM: whether it has halted, whether a simulated step has begun, whether
+to stop, and whether each rule writes or keeps and moves east or west. Only
+the checker is plain Python. That is about five calls per UTM step; two
+simulated steps took 1,566 calls and seven minutes, with every decision
+right. Two things made the driver work:
+
+- Asking in words, not Python. With `sim_steps == target` Jev said 1 equals
+  2 and stopped a step early; the steps left are now a list that is `empty`
+  or not. `if __name__ == "__main__":` was a coin flip (Jev never sees
+  dunders), and so was `running_as is "__main__"`; the file now asks
+  `how_this_file_runs is "run as a script"`.
+- Leaving out the source excerpt (`# jev: no-source`). With the excerpt,
+  `direction == "east"` (direction "east") scored p=0.37; without, 0.94.
+
+Some of the driver's answers were still close (as low as 0.10 confidence,
+though never wrong), so the full six steps would be a gamble.
+
 With an OpenRouter key, requests go to OpenRouter's pass-through to Jev
 (`https://openrouter.ai/api/v1/systemone`, model `~typesafe/jev-latest`),
 which speaks the same typed API as TypeSafe's own endpoint.
@@ -165,14 +327,26 @@ Other knobs: `JEVLANG_MODEL` (or the SDK's own `TYPESAFE_BASE_URL` and
 `TYPESAFE_DEFAULT_MODEL`, default `jev-latest`); `JEVLANG_THRESHOLD`; and `JEVLANG_LOCAL_PYTHON=1`, which evaluates
 conditions that are already valid Python locally instead of asking. This is known as "Luddite mode". 
 
-### Probabilistic branches
 
-Add `# jev: roll` to a header and the branch is taken *with* Jev's
-probability instead of whenever p ≥ 0.5:
+### Directives
+
+`# jev:` comments change how a condition is asked. With `# jev: roll` on a
+header, the branch is taken *with* Jev's probability instead of whenever
+p ≥ 0.5:
 
 ```python
 if what_you_said would make a gloomy ghost laugh:  # jev: roll
     ...
+```
+
+`# jev: no-source` leaves the source excerpt out, which can help small
+questions: `direction == "east"`, with direction "east", scored p=0.37 with
+the excerpt and 0.94 without. Directives combine (`# jev: roll, no-source`),
+and on a line of their own they apply to every condition in the file:
+
+```python
+# coding: jevlang
+# jev: no-source
 ```
 
 `JEVLANG_SEED` makes the

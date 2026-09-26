@@ -16,6 +16,7 @@ import importlib
 import os
 import re
 import sys
+import warnings
 from typing import Any
 
 from .runtime import NOVALUE, Decision, Request, try_pattern
@@ -119,7 +120,9 @@ class FakeJev:
             return self.match(req)
         if req.is_python:
             try:
-                value = eval(req.text, req.globals, req.locals)
+                with warnings.catch_warnings():  # see runtime._is_python_expr
+                    warnings.simplefilter("ignore", SyntaxWarning)
+                    value = eval(req.text, req.globals, req.locals)
             except NameError:
                 pass  # English that happens to parse, like "x is truthy"
             else:

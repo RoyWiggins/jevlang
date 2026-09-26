@@ -14,6 +14,7 @@ import random
 import re
 import sys
 import types
+import warnings
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -74,7 +75,9 @@ class Request:
             if self.subject is not NOVALUE:
                 subject["value"] = _jsonable(self.subject)
             return {"match_subject": subject, "variables": variables}
-        state = {"source": self.code, "line": self.lineno, "variables": variables}
+        state = {"variables": variables}
+        if self.code:
+            state = {"source": self.code, "line": self.lineno, **state}
         if self.iteration:
             state["times_this_line_was_evaluated_before"] = self.iteration
         return state
@@ -160,10 +163,14 @@ def _interesting(name: str, value: Any) -> bool:
 
 
 def _is_python_expr(text: str) -> bool:
-    try:
-        compile(text, "<jev>", "eval")
-    except SyntaxError:
-        return False
+    # "phase is not \"halt\"" parses as Python, and Python would warn about
+    # `is` with a literal; in jevlang that "is" is English, so keep quiet.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        try:
+            compile(text, "<jev>", "eval")
+        except SyntaxError:
+            return False
     return True
 
 
@@ -296,7 +303,8 @@ class Session:
             out.append(f"{mark} {n:>{width}} | {self.source_lines[n - 1]}")
         return "\n".join(out)
 
-    def _request(self, kind: str, text: str, lineno: int, local_vars: dict, **kw) -> Request:
+    def _request(self, kind: str, text: str, lineno: int, local_vars: dict,
+                 show_source: bool = True, **kw) -> Request:
         merged = {**self.globals, **local_vars}
         iteration = self.counts.get(lineno, 0)
         self.counts[lineno] = iteration + 1
@@ -305,7 +313,7 @@ class Session:
             text=text,
             is_python=_is_python_expr(text),
             variables={k: v for k, v in merged.items() if _interesting(k, v)},
-            code=self.context(lineno),
+            code=self.context(lineno) if show_source else "",
             filename=self.filename,
             lineno=lineno,
             iteration=iteration,
@@ -331,12 +339,16 @@ class Session:
 
     def cond(self, kind: str, text: str, lineno: int, local_vars: dict,
              mode: str | None = None) -> bool:
-        """Decide a condition.  With ``mode="roll"`` (from a ``# jev: roll``
-        comment) the answer is random: true with Jev's probability."""
+        """Decide a condition.  ``mode`` holds the ``# jev:`` directives:
+        ``roll`` makes the answer random (true with Jev's probability), and
+        ``no-source`` leaves the source excerpt out.  The excerpt can distract
+        Jev from small questions: `direction == "east"`, with direction
+        "east", scored p=0.37 with it and 0.94 without."""
         global last_decision
-        req = self._request(kind, text, lineno, local_vars)
+        flags = set(mode.split(",")) if mode else set()
+        req = self._request(kind, text, lineno, local_vars, show_source="no-source" not in flags)
         decision = decide(req)
-        if mode == "roll":
+        if "roll" in flags:
             p, roll = decision.probability, _rng.random()
             decision = Decision(roll < p, decision.confidence,
                                 f"rolled {roll:.2f} vs p={p:.2f}", odds=p)

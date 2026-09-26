@@ -46,7 +46,19 @@ HEADER_RE = re.compile(
 # matters because the file-run path discards whatever we'd put on line 1.
 JEV = "__import__('jevlang.runtime').runtime.session(globals())"
 
-ROLL_RE = re.compile(r"\bjev:\s*roll\b")
+# `# jev: roll, no-source` directives.  At the end of an if/elif/while
+# header they apply to that condition; on a line of their own, to every
+# condition in the file.
+DIRECTIVE_RE = re.compile(r"#\s*jev:\s*(?P<flags>[\w\s,-]+)")
+OWN_LINE_DIRECTIVE_RE = re.compile(r"^[ \t]*#\s*jev:\s*(?P<flags>[\w\s,-]+)$")
+FLAGS = ("roll", "no-source")
+
+
+def _flags(text: str | None, pattern=DIRECTIVE_RE) -> list[str]:
+    m = pattern.search(text or "")
+    if not m:
+        return []
+    return [f for f in (part.strip() for part in m["flags"].split(",")) if f in FLAGS]
 
 MATCHING_KWS = {"if", "elif", "while", "match"}
 
@@ -212,6 +224,9 @@ def transform(source: str) -> str:
         else:
             state.feed(ln.text)
 
+    file_flags = [f for ln in lines if ln.stmt_start and not ln.header
+                  for f in _flags(ln.text, OWN_LINE_DIRECTIVE_RE)]
+
     # Pass 2: rewrite headers.
     for idx, ln in enumerate(lines):
         m = ln.header
@@ -220,10 +235,11 @@ def transform(source: str) -> str:
         lineno = idx + 1
         indent, kw, cond = m["indent"], m["kw"], m["cond"]
         if kw != "match":
-            # `if the plan works:  # jev: roll` -> true with Jev's probability.
-            roll = ", 'roll'" if m["comment"] and ROLL_RE.search(m["comment"]) else ""
+            # e.g. `if the plan works:  # jev: roll` -> true with Jev's probability.
+            flags = sorted(set(file_flags) | set(_flags(m["comment"])))
+            mode = f", {','.join(flags)!r}" if flags else ""
             ln.replacement = (
-                f"{indent}{kw} {JEV}.cond({kw!r}, {cond!r}, {lineno}, locals(){roll}):"
+                f"{indent}{kw} {JEV}.cond({kw!r}, {cond!r}, {lineno}, locals(){mode}):"
             )
             continue
 
