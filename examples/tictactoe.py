@@ -4,7 +4,8 @@
 # only stores the board, prints it, and lists which squares form lines.
 #
 # Jev can't reliably spot three in a row on a whole board, so it is asked
-# about one line at a time instead.  It sort of works.
+# about one line at a time instead.  It sort of works: a five-move game took
+# about 200 calls, so run it with JEV_MAX_CALLS=300.
 board = {
     "top left": "empty", "top middle": "empty", "top right": "empty",
     "middle left": "empty", "center": "empty", "middle right": "empty",
