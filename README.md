@@ -1,7 +1,7 @@
 # jevlang
 
 Python where every `if`, `elif`, `while` and `match` (ternaries, list comprehension excepted) is decided by
-[Jev](https://jevai.net/), enabling *modern coding style*: conditionals no longer have to be Python at all:
+[Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev), enabling *modern coding style*: conditionals no longer have to be Python at all:
 
 ```python
 # coding: jevlang
