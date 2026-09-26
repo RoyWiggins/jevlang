@@ -5,7 +5,10 @@
 #
 # Jev can't reliably spot three in a row on a whole board, so it is asked
 # about one line at a time instead.  It sort of works: a five-move game took
-# about 200 calls, so run it with JEV_MAX_CALLS=300.
+# about 230 calls, so run it with JEV_MAX_CALLS=300.
+#
+# Conditions name the variable they're about (`just_won is true`), and "no
+# square" is the word "nothing" rather than None: Jev was unsure about both.
 board = {
     "top left": "empty", "top middle": "empty", "top right": "empty",
     "middle left": "empty", "center": "empty", "middle right": "empty",
@@ -54,6 +57,7 @@ def square_for(description):
             return "bottom middle"
         case the bottom right square:
             return "bottom right"
+    return "nothing"
 
 
 def completes_a_line(player, square, marks):
@@ -69,6 +73,7 @@ def free_square():
     for candidate, mark_there in board.items():
         if mark_there is empty:
             return candidate
+    return "nothing"
 
 
 def completing_square(player):
@@ -76,15 +81,16 @@ def completing_square(player):
     for candidate, mark_there in board.items():
         if mark_there is empty:
             would_win = completes_a_line(player, candidate, {**board, candidate: player})
-            if that would win:
+            if would_win is true:
                 return candidate
+    return "nothing"
 
 
 def jev_move():
     move = completing_square("O")  # win if we can
-    if move is None:
+    if move is nothing:
         move = completing_square("X")  # otherwise block
-    if move is None:
+    if move is nothing:
         move = free_square()
     return move
 
@@ -92,7 +98,7 @@ def jev_move():
 def human_move():
     typed = input("Your move (X), e.g. 'top left' or 'middle': ")
     square = square_for(typed)
-    if square is None:
+    if square is nothing:
         print("I couldn't tell which square you meant.")
         return human_move()
     mark_there = board[square]
@@ -103,23 +109,23 @@ def human_move():
 
 
 def play():
-    winner = None
+    winner = "nothing"
     spare_square = free_square()
-    while winner is None and spare_square is not None:
+    while winner is nothing and spare_square is not nothing:
         show()
         square = human_move()
         board[square] = "X"
         just_won = completes_a_line("X", square, board)
-        if X just won:
+        if just_won is true:
             winner = "X"
             break
         move = jev_move()
-        if move is None:
+        if move is nothing:
             break
         print(f"Jev plays the {move} square.")
         board[move] = "O"
         just_won = completes_a_line("O", move, board)
-        if O just won:
+        if just_won is true:
             winner = "O"
         spare_square = free_square()
 
