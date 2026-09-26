@@ -290,14 +290,8 @@ class Session:
         self.globals = module_globals
         self.counts: dict[int, int] = {}
         self.trace = bool(os.environ.get("JEVLANG_TRACE"))
-        # JEVLANG_SHOW_SOURCE=0 leaves the source excerpt out of conditions.
-        # It can distract: `direction == "east"` with direction="east" scored
-        # p=0.37 with the excerpt and 0.94 without.
-        self.show_source = os.environ.get("JEVLANG_SHOW_SOURCE", "1") != "0"
 
     def context(self, lineno: int) -> str:
-        if not self.show_source:
-            return ""
         lo = max(1, lineno - self.CONTEXT_BEFORE)
         hi = min(len(self.source_lines), lineno + self.CONTEXT_AFTER)
         if not self.source_lines:
@@ -309,7 +303,8 @@ class Session:
             out.append(f"{mark} {n:>{width}} | {self.source_lines[n - 1]}")
         return "\n".join(out)
 
-    def _request(self, kind: str, text: str, lineno: int, local_vars: dict, **kw) -> Request:
+    def _request(self, kind: str, text: str, lineno: int, local_vars: dict,
+                 show_source: bool = True, **kw) -> Request:
         merged = {**self.globals, **local_vars}
         iteration = self.counts.get(lineno, 0)
         self.counts[lineno] = iteration + 1
@@ -318,7 +313,7 @@ class Session:
             text=text,
             is_python=_is_python_expr(text),
             variables={k: v for k, v in merged.items() if _interesting(k, v)},
-            code=self.context(lineno),
+            code=self.context(lineno) if show_source else "",
             filename=self.filename,
             lineno=lineno,
             iteration=iteration,
@@ -344,12 +339,16 @@ class Session:
 
     def cond(self, kind: str, text: str, lineno: int, local_vars: dict,
              mode: str | None = None) -> bool:
-        """Decide a condition.  With ``mode="roll"`` (from a ``# jev: roll``
-        comment) the answer is random: true with Jev's probability."""
+        """Decide a condition.  ``mode`` holds the ``# jev:`` directives:
+        ``roll`` makes the answer random (true with Jev's probability), and
+        ``no-source`` leaves the source excerpt out.  The excerpt can distract
+        Jev from small questions: `direction == "east"`, with direction
+        "east", scored p=0.37 with it and 0.94 without."""
         global last_decision
-        req = self._request(kind, text, lineno, local_vars)
+        flags = set(mode.split(",")) if mode else set()
+        req = self._request(kind, text, lineno, local_vars, show_source="no-source" not in flags)
         decision = decide(req)
-        if mode == "roll":
+        if "roll" in flags:
             p, roll = decision.probability, _rng.random()
             decision = Decision(roll < p, decision.confidence,
                                 f"rolled {roll:.2f} vs p={p:.2f}", odds=p)

@@ -308,9 +308,7 @@ free, so it's unlimited unless you set the variable.
 Other knobs: `JEVLANG_MODEL` (or the SDK's own `TYPESAFE_BASE_URL` and
 `TYPESAFE_DEFAULT_MODEL`, default `jev-latest`); `JEVLANG_THRESHOLD`; and `JEVLANG_LOCAL_PYTHON=1`, which evaluates
 conditions that are already valid Python locally instead of asking. This is known as "Luddite mode". 
-`JEVLANG_SHOW_SOURCE=0` leaves the source excerpt out of conditions: it can
-distract Jev from small questions (`direction == "east"`, with direction
-"east", scored p=0.37 with the excerpt and 0.94 without).
+
 
 ### Probabilistic branches
 
@@ -320,6 +318,16 @@ probability instead of whenever p ≥ 0.5:
 ```python
 if what_you_said would make a gloomy ghost laugh:  # jev: roll
     ...
+```
+
+`# jev: no-source` leaves the source excerpt out, which can help small
+questions: `direction == "east"`, with direction "east", scored p=0.37 with
+the excerpt and 0.94 without. Directives combine (`# jev: roll, no-source`),
+and on a line of their own they apply to every condition in the file:
+
+```python
+# coding: jevlang
+# jev: no-source
 ```
 
 `JEVLANG_SEED` makes the
