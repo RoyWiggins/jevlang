@@ -7,8 +7,9 @@
 # about one line at a time instead.  It sort of works: a five-move game took
 # about 230 calls, so run it with JEV_MAX_CALLS=300.
 #
-# Conditions name the variable they're about (`just_won is true`), and "no
-# square" is the word "nothing" rather than None: Jev was unsure about both.
+# Most conditions name the variable they're about (`would_win is true`), and
+# "no square" is the word "nothing" rather than None: Jev was unsure about
+# both.  "X just won" is left vague because it's funnier.
 board = {
     "top left": "empty", "top middle": "empty", "top right": "empty",
     "middle left": "empty", "center": "empty", "middle right": "empty",
@@ -116,7 +117,7 @@ def play():
         square = human_move()
         board[square] = "X"
         just_won = completes_a_line("X", square, board)
-        if just_won is true:
+        if X just won:
             winner = "X"
             break
         move = jev_move()
@@ -125,7 +126,7 @@ def play():
         print(f"Jev plays the {move} square.")
         board[move] = "O"
         just_won = completes_a_line("O", move, board)
-        if just_won is true:
+        if O just won:
             winner = "O"
         spare_square = free_square()
 
