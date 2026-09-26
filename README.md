@@ -106,16 +106,15 @@ JEVLANG_TRACE=1 uv run python examples/reviews.py
 [jev #3] reviews.py:9 match 'review' -> 2 @ 0.98 (p=0.98)
 😐 It was fine, I guess.
 ```
+### Examples
 
 `examples/fizzbuzz.py` is FizzBuzz with English conditions
 (`if n is divisible by both three and five:`).
 
 `examples/vibe_sort.py` bubble-sorts foods by spiciness
 
-`examples/tictactoe.py` is tic-tac-toe with Jev in charge of everything:
-which square you meant, whether it's taken, whether a line is complete, and
-where O plays. Jev can't spot three in a row on a whole board, so it checks
-one line at a time, which comes to about 230 calls a game. It sort of works:
+`examples/tictactoe.py` is tic-tac-toe with Jev in charge of everything. Jev can't spot three in a row on a whole board, so it checks
+one line at a time, which comes to about 230 calls a game. It mostly works:
 
 ```
 Your move (X), e.g. 'top left' or 'middle': middle
